@@ -55,9 +55,7 @@ const Home = () => {
           <h1 className="text-5xl md:text-7xl font-serif font-bold mb-6 animate-scale-in">
             Тёплый круг. Настоящий пар.<br/>Ваше сообщество.
           </h1>
-          <p className="text-xl md:text-2xl mb-10 max-w-3xl mx-auto leading-relaxed">
-            Собираем единомышленников в лучших банях Москвы. Шеринг аренды, экспертные мастера и душевная атмосфера.
-          </p>
+          <p className="text-xl md:text-2xl mb-10 max-w-3xl mx-auto leading-relaxed">Собираем единомышленников в лучших банях Москвы. аренда в складчину, экспертные мастера и душевная атмосфера.</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <a href="https://t.me/sparkomrf" target="_blank" rel="noopener noreferrer">
               <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-8 py-6 text-lg">
