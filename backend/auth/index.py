@@ -50,6 +50,76 @@ def get_user_by_token(token: str) -> dict | None:
     finally:
         conn.close()
 
+def check_rate_limit(identifier: str, action: str, max_attempts: int = 5, window_minutes: int = 15) -> tuple[bool, int]:
+    conn = get_db_connection()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """SELECT * FROM t_p13705114_spa_community_portal.rate_limits 
+                   WHERE identifier = %s AND action = %s""",
+                (identifier, action)
+            )
+            record = cur.fetchone()
+            
+            now = datetime.now()
+            
+            if record:
+                if record['blocked_until'] and record['blocked_until'] > now:
+                    remaining = int((record['blocked_until'] - now).total_seconds() / 60)
+                    return False, remaining
+                
+                time_diff = (now - record['first_attempt']).total_seconds() / 60
+                
+                if time_diff > window_minutes:
+                    cur.execute(
+                        """UPDATE t_p13705114_spa_community_portal.rate_limits 
+                           SET attempts = 1, first_attempt = %s, last_attempt = %s, blocked_until = NULL 
+                           WHERE identifier = %s AND action = %s""",
+                        (now, now, identifier, action)
+                    )
+                    conn.commit()
+                    return True, 0
+                
+                new_attempts = record['attempts'] + 1
+                
+                if new_attempts > max_attempts:
+                    blocked_until = now + timedelta(minutes=window_minutes)
+                    cur.execute(
+                        """UPDATE t_p13705114_spa_community_portal.rate_limits 
+                           SET attempts = %s, last_attempt = %s, blocked_until = %s 
+                           WHERE identifier = %s AND action = %s""",
+                        (new_attempts, now, blocked_until, identifier, action)
+                    )
+                    conn.commit()
+                    return False, window_minutes
+                
+                cur.execute(
+                    """UPDATE t_p13705114_spa_community_portal.rate_limits 
+                       SET attempts = %s, last_attempt = %s 
+                       WHERE identifier = %s AND action = %s""",
+                    (new_attempts, now, identifier, action)
+                )
+                conn.commit()
+                return True, 0
+            else:
+                cur.execute(
+                    """INSERT INTO t_p13705114_spa_community_portal.rate_limits 
+                       (identifier, action, attempts, first_attempt, last_attempt) 
+                       VALUES (%s, %s, 1, %s, %s)""",
+                    (identifier, action, now, now)
+                )
+                conn.commit()
+                return True, 0
+    finally:
+        conn.close()
+
+def get_client_ip(event: dict) -> str:
+    headers = event.get('headers', {})
+    forwarded = headers.get('X-Forwarded-For', '')
+    if forwarded:
+        return forwarded.split(',')[0].strip()
+    return headers.get('X-Real-IP', event.get('requestContext', {}).get('identity', {}).get('sourceIp', 'unknown'))
+
 def handler(event: dict, context) -> dict:
     method = event.get('httpMethod', 'GET')
     
@@ -76,8 +146,19 @@ def handler(event: dict, context) -> dict:
             action = body.get('action')
             
             if action == 'login':
+                client_ip = get_client_ip(event)
                 email = body.get('email', '').strip().lower()
                 password = body.get('password', '')
+                
+                allowed, wait_minutes = check_rate_limit(client_ip, 'login', max_attempts=5, window_minutes=15)
+                if not allowed:
+                    return {
+                        'statusCode': 429,
+                        'headers': headers,
+                        'body': json.dumps({
+                            'error': f'Слишком много попыток входа. Попробуйте через {wait_minutes} мин.'
+                        })
+                    }
                 
                 if not email or not password:
                     return {
@@ -121,6 +202,18 @@ def handler(event: dict, context) -> dict:
                     conn.close()
             
             elif action == 'register':
+                client_ip = get_client_ip(event)
+                
+                allowed, wait_minutes = check_rate_limit(client_ip, 'register', max_attempts=3, window_minutes=60)
+                if not allowed:
+                    return {
+                        'statusCode': 429,
+                        'headers': headers,
+                        'body': json.dumps({
+                            'error': f'Слишком много попыток регистрации. Попробуйте через {wait_minutes} мин.'
+                        })
+                    }
+                
                 email = body.get('email', '').strip().lower()
                 password = body.get('password', '')
                 name = body.get('name', '').strip()
