@@ -304,9 +304,7 @@ const Home = () => {
 
       <section id="how-it-works" className="py-20 bg-muted">
         <div className="container mx-auto px-4">
-          <h2 className="text-4xl md:text-5xl font-serif font-bold text-center mb-4">
-            Попасть в нашу баню — просто
-          </h2>
+          <h2 className="text-4xl md:text-5xl font-serif font-bold text-center mb-4">Попасть в нашу баню — легко</h2>
           <p className="text-center text-muted-foreground mb-16 text-lg">
             Всего 4 шага отделяют тебя от качественного пара
           </p>
