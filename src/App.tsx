@@ -19,6 +19,14 @@ import AboutPage from "./pages/AboutPage";
 import LoginPage from "./pages/LoginPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminEventsPage from "./pages/admin/AdminEventsPage";
+import AdminSaunasPage from "./pages/admin/AdminSaunasPage";
+import AdminMastersPage from "./pages/admin/AdminMastersPage";
+import AdminUsersPage from "./pages/admin/AdminUsersPage";
+import AdminTransactionsPage from "./pages/admin/AdminTransactionsPage";
+import AdminBookingsPage from "./pages/admin/AdminBookingsPage";
+import AdminSettingsPage from "./pages/admin/AdminSettingsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,24 +38,32 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Layout>
-            <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/events" element={<EventsListPage />} />
-            <Route path="/events/:slug" element={<EventDetailPage />} />
-            <Route path="/bany" element={<BathsListPage />} />
-            <Route path="/bany/:slug" element={<BathDetailPage />} />
-            <Route path="/masters" element={<MastersListPage />} />
-            <Route path="/masters/:slug" element={<MasterDetailPage />} />
-            <Route path="/blog" element={<BlogPage />} />
-            <Route path="/blog/:slug" element={<BlogPostPage />} />
-            <Route path="/about" element={<AboutPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-            <Route path="/reset-password" element={<ResetPasswordPage />} />
-            <Route path="*" element={<NotFound />} />
+          <Routes>
+            <Route path="/admin" element={<AdminDashboard />}>
+              <Route path="events" element={<AdminEventsPage />} />
+              <Route path="saunas" element={<AdminSaunasPage />} />
+              <Route path="masters" element={<AdminMastersPage />} />
+              <Route path="users" element={<AdminUsersPage />} />
+              <Route path="transactions" element={<AdminTransactionsPage />} />
+              <Route path="bookings" element={<AdminBookingsPage />} />
+              <Route path="settings" element={<AdminSettingsPage />} />
+            </Route>
+
+            <Route path="/" element={<Layout><Home /></Layout>} />
+            <Route path="/events" element={<Layout><EventsListPage /></Layout>} />
+            <Route path="/events/:slug" element={<Layout><EventDetailPage /></Layout>} />
+            <Route path="/bany" element={<Layout><BathsListPage /></Layout>} />
+            <Route path="/bany/:slug" element={<Layout><BathDetailPage /></Layout>} />
+            <Route path="/masters" element={<Layout><MastersListPage /></Layout>} />
+            <Route path="/masters/:slug" element={<Layout><MasterDetailPage /></Layout>} />
+            <Route path="/blog" element={<Layout><BlogPage /></Layout>} />
+            <Route path="/blog/:slug" element={<Layout><BlogPostPage /></Layout>} />
+            <Route path="/about" element={<Layout><AboutPage /></Layout>} />
+            <Route path="/login" element={<Layout><LoginPage /></Layout>} />
+            <Route path="/forgot-password" element={<Layout><ForgotPasswordPage /></Layout>} />
+            <Route path="/reset-password" element={<Layout><ResetPasswordPage /></Layout>} />
+            <Route path="*" element={<Layout><NotFound /></Layout>} />
           </Routes>
-        </Layout>
       </BrowserRouter>
     </TooltipProvider>
     </AuthProvider>
