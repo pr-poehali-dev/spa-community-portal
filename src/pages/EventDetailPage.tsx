@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, Navigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import Icon from '@/components/ui/icon';
-import { mockEvents } from '@/data/mockData';
+import { getEventBySlug, createBooking, Event } from '@/lib/api';
 
 const getTypeLabel = (type: string) => {
   switch(type) {
@@ -30,18 +30,59 @@ const getTypeBadgeColor = (type: string) => {
 
 const EventDetailPage = () => {
   const { slug } = useParams();
+  const [event, setEvent] = useState<Event | null>(null);
+  const [loading, setLoading] = useState(true);
   const [bookingData, setBookingData] = useState({ name: '', phone: '', telegram: '' });
-  
-  const event = mockEvents.find(e => e.slug === slug);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+
+  useEffect(() => {
+    if (slug) {
+      getEventBySlug(slug)
+        .then(data => setEvent(data))
+        .catch(console.error)
+        .finally(() => setLoading(false));
+    }
+  }, [slug]);
+
+  const submitBooking = async () => {
+    if (!event || !bookingData.name || !bookingData.phone) {
+      alert('Пожалуйста, заполните все обязательные поля');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await createBooking({
+        event_id: event.id,
+        name: bookingData.name,
+        phone: bookingData.phone,
+        telegram: bookingData.telegram
+      });
+      alert('Заявка отправлена! Мы свяжемся с вами в Telegram для подтверждения.');
+      setBookingData({ name: '', phone: '', telegram: '' });
+      setDialogOpen(false);
+      
+      if (slug) {
+        getEventBySlug(slug).then(data => setEvent(data));
+      }
+    } catch (error) {
+      alert('Ошибка при отправке заявки. Попробуйте ещё раз.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-12 flex justify-center">
+        <p className="text-muted-foreground">Загрузка...</p>
+      </div>
+    );
+  }
   
   if (!event) {
     return <Navigate to="/404" replace />;
-  }
-
-  const submitBooking = () => {
-    console.log('Booking:', { event, data: bookingData });
-    alert('Заявка отправлена! Мы свяжемся с вами в Telegram для подтверждения.');
-    setBookingData({ name: '', phone: '', telegram: '' });
   };
 
   return (
@@ -49,7 +90,7 @@ const EventDetailPage = () => {
       <div 
         className="relative h-[50vh] bg-cover bg-center"
         style={{ 
-          backgroundImage: `url(${event.image})`,
+          backgroundImage: `url(${event.image_url})`,
         }}
       >
         <div className="absolute inset-0 bg-black/50" />
@@ -151,14 +192,18 @@ const EventDetailPage = () => {
                   </div>
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-muted-foreground">Свободно:</span>
-                    <span className="font-medium text-primary">{event.availableSpots}</span>
+                    <span className="font-medium text-primary">{event.available_spots}</span>
                   </div>
                 </div>
 
-                <Dialog>
+                <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button className="w-full" size="lg">
-                      Записаться на мероприятие
+                    <Button 
+                      className="w-full" 
+                      size="lg"
+                      disabled={event.available_spots === 0}
+                    >
+                      {event.available_spots > 0 ? 'Записаться на мероприятие' : 'Мест нет'}
                     </Button>
                   </DialogTrigger>
                   <DialogContent>
@@ -203,8 +248,12 @@ const EventDetailPage = () => {
                           Стоимость: {event.price} ₽
                         </p>
                       </div>
-                      <Button onClick={submitBooking} className="w-full">
-                        Подтвердить запись
+                      <Button 
+                        onClick={submitBooking} 
+                        className="w-full"
+                        disabled={isSubmitting || !bookingData.name || !bookingData.phone}
+                      >
+                        {isSubmitting ? 'Отправка...' : 'Подтвердить запись'}
                       </Button>
                     </div>
                   </DialogContent>
