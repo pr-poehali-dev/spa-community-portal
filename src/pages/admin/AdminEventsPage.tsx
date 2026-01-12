@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -22,65 +22,122 @@ import {
 import { Badge } from '@/components/ui/badge';
 import Icon from '@/components/ui/icon';
 import { useToast } from '@/hooks/use-toast';
+import { adminApi } from '@/lib/adminApi';
+
+interface Event {
+  id: number;
+  slug: string;
+  title: string;
+  description: string;
+  date: string;
+  time: string;
+  location: string;
+  type: 'men' | 'women' | 'mixed';
+  price: number;
+  available_spots: number;
+  total_spots: number;
+  image_url?: string;
+}
 
 const AdminEventsPage = () => {
   const { toast } = useToast();
-  const [events, setEvents] = useState([
-    {
-      id: 1,
-      title: 'Фестиваль банной культуры',
-      date: '2026-02-15',
-      location: 'Москва, Банная ул., 1',
-      status: 'published',
-      participants: 45,
-      maxParticipants: 100,
-    },
-    {
-      id: 2,
-      title: 'Мастер-класс "Искусство парения"',
-      date: '2026-02-20',
-      location: 'Санкт-Петербург',
-      status: 'draft',
-      participants: 12,
-      maxParticipants: 30,
-    },
-  ]);
-
+  const [events, setEvents] = useState<Event[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
+    slug: '',
     title: '',
     description: '',
     date: '',
+    time: '14:00',
     location: '',
-    maxParticipants: '',
-    price: '',
+    type: 'mixed',
+    total_spots: 10,
+    price: 1500,
+    image_url: '',
   });
 
-  const handleCreateEvent = () => {
-    toast({
-      title: 'Событие создано',
-      description: 'Новое событие успешно добавлено',
-    });
-    setIsCreateDialogOpen(false);
-    setFormData({
-      title: '',
-      description: '',
-      date: '',
-      location: '',
-      maxParticipants: '',
-      price: '',
-    });
+  useEffect(() => {
+    loadEvents();
+  }, []);
+
+  const loadEvents = async () => {
+    try {
+      const data = await adminApi.events.getAll();
+      setEvents(data);
+    } catch (error) {
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось загрузить события',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      published: { label: 'Опубликовано', variant: 'default' as const },
-      draft: { label: 'Черновик', variant: 'secondary' as const },
-      cancelled: { label: 'Отменено', variant: 'destructive' as const },
-    };
-    const config = statusConfig[status as keyof typeof statusConfig];
-    return <Badge variant={config.variant}>{config.label}</Badge>;
+  const handleCreateEvent = async () => {
+    try {
+      await adminApi.events.create(formData);
+      toast({
+        title: 'Событие создано',
+        description: 'Новое событие успешно добавлено',
+      });
+      setIsCreateDialogOpen(false);
+      setFormData({
+        slug: '',
+        title: '',
+        description: '',
+        date: '',
+        time: '14:00',
+        location: '',
+        type: 'mixed',
+        total_spots: 10,
+        price: 1500,
+        image_url: '',
+      });
+      loadEvents();
+    } catch (error) {
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось создать событие',
+        variant: 'destructive',
+      });
+    }
   };
+
+  const handleDeleteEvent = async (id: number) => {
+    if (!confirm('Вы уверены, что хотите удалить это событие?')) return;
+    
+    try {
+      await adminApi.events.delete(id);
+      toast({
+        title: 'Событие удалено',
+        description: 'Событие успешно удалено',
+      });
+      loadEvents();
+    } catch (error) {
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось удалить событие',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const getTypeBadge = (type: string) => {
+    const config = {
+      men: { label: 'Мужское', variant: 'default' as const },
+      women: { label: 'Женское', variant: 'secondary' as const },
+      mixed: { label: 'Смешанное', variant: 'outline' as const },
+    };
+    const typeConfig = config[type as keyof typeof config];
+    return <Badge variant={typeConfig.variant}>{typeConfig.label}</Badge>;
+  };
+
+  if (loading) {
+    return <div className="flex items-center justify-center h-64">Загрузка...</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -93,7 +150,7 @@ const AdminEventsPage = () => {
               Создать событие
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Новое событие</DialogTitle>
               <DialogDescription>
@@ -111,6 +168,15 @@ const AdminEventsPage = () => {
                 />
               </div>
               <div>
+                <Label htmlFor="slug">Slug (URL)</Label>
+                <Input
+                  id="slug"
+                  value={formData.slug}
+                  onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+                  placeholder="festival-bannoy-kultury"
+                />
+              </div>
+              <div>
                 <Label htmlFor="description">Описание</Label>
                 <Textarea
                   id="description"
@@ -122,33 +188,54 @@ const AdminEventsPage = () => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="date">Дата и время</Label>
+                  <Label htmlFor="date">Дата</Label>
                   <Input
                     id="date"
-                    type="datetime-local"
+                    type="date"
                     value={formData.date}
                     onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="location">Локация</Label>
+                  <Label htmlFor="time">Время</Label>
                   <Input
-                    id="location"
-                    value={formData.location}
-                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                    placeholder="Москва, Банная ул."
+                    id="time"
+                    type="time"
+                    value={formData.time}
+                    onChange={(e) => setFormData({ ...formData, time: e.target.value })}
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="location">Локация</Label>
+                <Input
+                  id="location"
+                  value={formData.location}
+                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                  placeholder="Москва, Банная ул., 1"
+                />
+              </div>
+              <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <Label htmlFor="maxParticipants">Макс. участников</Label>
+                  <Label htmlFor="type">Тип</Label>
+                  <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="men">Мужское</SelectItem>
+                      <SelectItem value="women">Женское</SelectItem>
+                      <SelectItem value="mixed">Смешанное</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="total_spots">Макс. мест</Label>
                   <Input
-                    id="maxParticipants"
+                    id="total_spots"
                     type="number"
-                    value={formData.maxParticipants}
-                    onChange={(e) => setFormData({ ...formData, maxParticipants: e.target.value })}
-                    placeholder="100"
+                    value={formData.total_spots}
+                    onChange={(e) => setFormData({ ...formData, total_spots: parseInt(e.target.value) })}
                   />
                 </div>
                 <div>
@@ -157,10 +244,18 @@ const AdminEventsPage = () => {
                     id="price"
                     type="number"
                     value={formData.price}
-                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                    placeholder="1500"
+                    onChange={(e) => setFormData({ ...formData, price: parseInt(e.target.value) })}
                   />
                 </div>
+              </div>
+              <div>
+                <Label htmlFor="image_url">URL изображения</Label>
+                <Input
+                  id="image_url"
+                  value={formData.image_url}
+                  onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
+                  placeholder="https://..."
+                />
               </div>
               <div className="flex gap-2 justify-end">
                 <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
@@ -186,12 +281,12 @@ const AdminEventsPage = () => {
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
                     <h3 className="text-xl font-bold text-orange-900">{event.title}</h3>
-                    {getStatusBadge(event.status)}
+                    {getTypeBadge(event.type)}
                   </div>
                   <div className="space-y-2 text-gray-600">
                     <div className="flex items-center gap-2">
                       <Icon name="Calendar" className="h-4 w-4" />
-                      <span>{new Date(event.date).toLocaleDateString('ru-RU')}</span>
+                      <span>{new Date(event.date).toLocaleDateString('ru-RU')} в {event.time}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Icon name="MapPin" className="h-4 w-4" />
@@ -200,19 +295,29 @@ const AdminEventsPage = () => {
                     <div className="flex items-center gap-2">
                       <Icon name="Users" className="h-4 w-4" />
                       <span>
-                        {event.participants} / {event.maxParticipants} участников
+                        {event.total_spots - event.available_spots} / {event.total_spots} участников
                       </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Icon name="Coins" className="h-4 w-4" />
+                      <span>{event.price} ₽</span>
                     </div>
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="outline" size="icon">
-                    <Icon name="Edit" className="h-4 w-4" />
-                  </Button>
-                  <Button variant="outline" size="icon">
+                  <Button 
+                    variant="outline" 
+                    size="icon"
+                    onClick={() => window.open(`/events/${event.slug}`, '_blank')}
+                  >
                     <Icon name="Eye" className="h-4 w-4" />
                   </Button>
-                  <Button variant="outline" size="icon" className="text-red-600 hover:text-red-700">
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    className="text-red-600 hover:text-red-700"
+                    onClick={() => handleDeleteEvent(event.id)}
+                  >
                     <Icon name="Trash2" className="h-4 w-4" />
                   </Button>
                 </div>

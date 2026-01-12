@@ -1,118 +1,98 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import Icon from '@/components/ui/icon';
 import { useToast } from '@/hooks/use-toast';
+import { adminApi } from '@/lib/adminApi';
+
+interface Sauna {
+  id: number;
+  slug: string;
+  name: string;
+  address: string;
+  description: string;
+  capacity: number;
+  price_per_hour: number;
+  rating: number;
+  reviews_count: number;
+  features?: any[];
+  images?: any[];
+}
 
 const AdminSaunasPage = () => {
   const { toast } = useToast();
-  const [saunas, setSaunas] = useState([
-    {
-      id: 1,
-      name: 'Русская баня на дровах',
-      partner: 'ООО "Банный комплекс"',
-      location: 'Москва, ул. Банная, 5',
-      status: 'active',
-      rating: 4.8,
-      bookings: 145,
-    },
-    {
-      id: 2,
-      name: 'Финская сауна Premium',
-      partner: 'ИП Иванов А.В.',
-      location: 'Санкт-Петербург',
-      status: 'pending',
-      rating: 0,
-      bookings: 0,
-    },
-    {
-      id: 3,
-      name: 'Турецкий хаммам',
-      partner: 'ООО "Восток"',
-      location: 'Казань',
-      status: 'suspended',
-      rating: 4.2,
-      bookings: 78,
-    },
-  ]);
-
-  const [filterStatus, setFilterStatus] = useState('all');
+  const [saunas, setSaunas] = useState<Sauna[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const handleApprove = (id: number) => {
-    toast({
-      title: 'Баня одобрена',
-      description: 'Заведение теперь видно пользователям',
-    });
+  useEffect(() => {
+    loadSaunas();
+  }, []);
+
+  const loadSaunas = async () => {
+    try {
+      const data = await adminApi.saunas.getAll();
+      setSaunas(data);
+    } catch (error) {
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось загрузить бани',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleReject = (id: number) => {
-    toast({
-      title: 'Заявка отклонена',
-      description: 'Партнёр получит уведомление',
-      variant: 'destructive',
-    });
+  const handleDelete = async (id: number) => {
+    if (!confirm('Вы уверены, что хотите удалить эту баню?')) return;
+    
+    try {
+      await adminApi.saunas.delete(id);
+      toast({
+        title: 'Баня удалена',
+        description: 'Баня успешно удалена из системы',
+      });
+      loadSaunas();
+    } catch (error) {
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось удалить баню',
+        variant: 'destructive',
+      });
+    }
   };
 
-  const handleSuspend = (id: number) => {
-    toast({
-      title: 'Баня заблокирована',
-      description: 'Заведение скрыто из поиска',
-      variant: 'destructive',
-    });
-  };
+  const filteredSaunas = saunas.filter((sauna) =>
+    sauna.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    sauna.address.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
-  const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      active: { label: 'Активна', variant: 'default' as const },
-      pending: { label: 'На модерации', variant: 'secondary' as const },
-      suspended: { label: 'Заблокирована', variant: 'destructive' as const },
-    };
-    const config = statusConfig[status as keyof typeof statusConfig];
-    return <Badge variant={config.variant}>{config.label}</Badge>;
-  };
-
-  const filteredSaunas = saunas.filter((sauna) => {
-    const matchesStatus = filterStatus === 'all' || sauna.status === filterStatus;
-    const matchesSearch =
-      sauna.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      sauna.partner.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesStatus && matchesSearch;
-  });
+  if (loading) {
+    return <div className="flex items-center justify-center h-64">Загрузка...</div>;
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-3xl font-bold text-orange-900">Управление банями</h2>
+        <Button className="bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700">
+          <Icon name="Plus" className="h-4 w-4 mr-2" />
+          Добавить баню
+        </Button>
       </div>
 
       <div className="flex gap-4">
-        <Input
-          placeholder="Поиск по названию или партнеру..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="max-w-md"
-        />
-        <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-48">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Все статусы</SelectItem>
-            <SelectItem value="active">Активные</SelectItem>
-            <SelectItem value="pending">На модерации</SelectItem>
-            <SelectItem value="suspended">Заблокированные</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex-1">
+          <Input
+            placeholder="Поиск по названию или адресу..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="max-w-md"
+          />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4">
@@ -123,77 +103,42 @@ const AdminSaunasPage = () => {
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-3">
                     <h3 className="text-xl font-bold text-orange-900">{sauna.name}</h3>
-                    {getStatusBadge(sauna.status)}
+                    <Badge variant="default">Активна</Badge>
                   </div>
-
                   <div className="space-y-2 text-gray-600">
                     <div className="flex items-center gap-2">
-                      <Icon name="Building" className="h-4 w-4" />
-                      <span>{sauna.partner}</span>
+                      <Icon name="MapPin" className="h-4 w-4" />
+                      <span>{sauna.address}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Icon name="MapPin" className="h-4 w-4" />
-                      <span>{sauna.location}</span>
+                      <Icon name="Users" className="h-4 w-4" />
+                      <span>Вместимость: {sauna.capacity} человек</span>
                     </div>
-                    {sauna.status === 'active' && (
-                      <>
-                        <div className="flex items-center gap-2">
-                          <Icon name="Star" className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                          <span>{sauna.rating} рейтинг</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Icon name="Calendar" className="h-4 w-4" />
-                          <span>{sauna.bookings} бронирований</span>
-                        </div>
-                      </>
-                    )}
+                    <div className="flex items-center gap-2">
+                      <Icon name="Coins" className="h-4 w-4" />
+                      <span>Цена: {sauna.price_per_hour} ₽/час</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Icon name="Star" className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+                      <span>{sauna.rating.toFixed(1)} ({sauna.reviews_count} отзывов)</span>
+                    </div>
                   </div>
                 </div>
-
                 <div className="flex gap-2">
-                  {sauna.status === 'pending' && (
-                    <>
-                      <Button
-                        onClick={() => handleApprove(sauna.id)}
-                        className="bg-green-600 hover:bg-green-700"
-                      >
-                        <Icon name="CheckCircle" className="h-4 w-4 mr-2" />
-                        Одобрить
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={() => handleReject(sauna.id)}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        <Icon name="XCircle" className="h-4 w-4 mr-2" />
-                        Отклонить
-                      </Button>
-                    </>
-                  )}
-                  {sauna.status === 'active' && (
-                    <Button
-                      variant="outline"
-                      onClick={() => handleSuspend(sauna.id)}
-                      className="text-red-600 hover:text-red-700"
-                    >
-                      <Icon name="Ban" className="h-4 w-4 mr-2" />
-                      Заблокировать
-                    </Button>
-                  )}
-                  {sauna.status === 'suspended' && (
-                    <Button
-                      onClick={() => handleApprove(sauna.id)}
-                      className="bg-green-600 hover:bg-green-700"
-                    >
-                      <Icon name="CheckCircle" className="h-4 w-4 mr-2" />
-                      Разблокировать
-                    </Button>
-                  )}
-                  <Button variant="outline" size="icon">
-                    <Icon name="Edit" className="h-4 w-4" />
-                  </Button>
-                  <Button variant="outline" size="icon">
+                  <Button 
+                    variant="outline" 
+                    size="icon"
+                    onClick={() => window.open(`/bany/${sauna.slug}`, '_blank')}
+                  >
                     <Icon name="Eye" className="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    className="text-red-600 hover:text-red-700"
+                    onClick={() => handleDelete(sauna.id)}
+                  >
+                    <Icon name="Trash2" className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
@@ -201,6 +146,12 @@ const AdminSaunasPage = () => {
           </Card>
         ))}
       </div>
+
+      {filteredSaunas.length === 0 && (
+        <div className="text-center py-12 text-gray-500">
+          Бани не найдены
+        </div>
+      )}
     </div>
   );
 };

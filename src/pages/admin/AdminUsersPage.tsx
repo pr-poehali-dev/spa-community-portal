@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -6,68 +6,91 @@ import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Icon from '@/components/ui/icon';
 import { useToast } from '@/hooks/use-toast';
+import { adminApi } from '@/lib/adminApi';
+
+interface User {
+  id: number;
+  email: string;
+  name: string;
+  phone?: string;
+  telegram?: string;
+  role: string;
+  is_active: boolean;
+  created_at: string;
+  avatar_url?: string;
+}
 
 const AdminUsersPage = () => {
   const { toast } = useToast();
-  const [users, setUsers] = useState([
-    {
-      id: 1,
-      name: 'Дмитрий Смирнов',
-      email: 'dmitry@example.com',
-      phone: '+7 (999) 111-22-33',
-      role: 'user',
-      status: 'active',
-      registeredAt: '2025-12-15',
-      bookings: 12,
-      totalSpent: 15600,
-    },
-    {
-      id: 2,
-      name: 'Елена Волкова',
-      email: 'elena@example.com',
-      phone: '+7 (999) 222-33-44',
-      role: 'user',
-      status: 'active',
-      registeredAt: '2026-01-03',
-      bookings: 3,
-      totalSpent: 4500,
-    },
-    {
-      id: 3,
-      name: 'Спам Бот',
-      email: 'spam@example.com',
-      phone: '+7 (999) 999-99-99',
-      role: 'user',
-      status: 'blocked',
-      registeredAt: '2026-01-10',
-      bookings: 0,
-      totalSpent: 0,
-    },
-  ]);
-
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const handleBlock = (id: number) => {
-    toast({
-      title: 'Пользователь заблокирован',
-      description: 'Доступ к платформе ограничен',
-      variant: 'destructive',
-    });
+  useEffect(() => {
+    loadUsers();
+  }, []);
+
+  const loadUsers = async () => {
+    try {
+      const data = await adminApi.users.getAll();
+      setUsers(data);
+    } catch (error) {
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось загрузить пользователей',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleUnblock = (id: number) => {
-    toast({
-      title: 'Пользователь разблокирован',
-      description: 'Доступ восстановлен',
-    });
+  const handleToggleStatus = async (id: number, currentStatus: boolean) => {
+    try {
+      await adminApi.users.update(id, { is_active: !currentStatus });
+      toast({
+        title: currentStatus ? 'Пользователь заблокирован' : 'Пользователь разблокирован',
+        description: currentStatus ? 'Доступ к платформе ограничен' : 'Доступ восстановлен',
+      });
+      loadUsers();
+    } catch (error) {
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось изменить статус',
+        variant: 'destructive',
+      });
+    }
   };
 
-  const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      active: { label: 'Активен', variant: 'default' as const },
-      blocked: { label: 'Заблокирован', variant: 'destructive' as const },
+  const handleDelete = async (id: number) => {
+    if (!confirm('Вы уверены, что хотите удалить этого пользователя?')) return;
+    
+    try {
+      await adminApi.users.delete(id);
+      toast({
+        title: 'Пользователь удален',
+        description: 'Аккаунт успешно удален',
+      });
+      loadUsers();
+    } catch (error) {
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось удалить пользователя',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const getRoleBadge = (role: string) => {
+    const roleConfig: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
+      participant: { label: 'Участник', variant: 'default' },
+      master: { label: 'Мастер', variant: 'secondary' },
+      partner: { label: 'Партнер', variant: 'outline' },
+      organizer: { label: 'Организатор', variant: 'secondary' },
+      editor: { label: 'Редактор', variant: 'secondary' },
+      admin: { label: 'Админ', variant: 'destructive' },
     };
-    const config = statusConfig[status as keyof typeof statusConfig];
+    const config = roleConfig[role] || { label: role, variant: 'outline' as const };
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
@@ -76,85 +99,101 @@ const AdminUsersPage = () => {
     user.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  if (loading) {
+    return <div className="flex items-center justify-center h-64">Загрузка...</div>;
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-3xl font-bold text-orange-900">Управление пользователями</h2>
+        <Button className="bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700">
+          <Icon name="Plus" className="h-4 w-4 mr-2" />
+          Добавить пользователя
+        </Button>
       </div>
 
-      <Input
-        placeholder="Поиск по имени или email..."
-        value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
-        className="max-w-md"
-      />
+      <div className="flex gap-4">
+        <div className="flex-1">
+          <Input
+            placeholder="Поиск по имени или email..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="max-w-md"
+          />
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 gap-4">
         {filteredUsers.map((user) => (
           <Card key={user.id} className="border-orange-100 shadow-sm">
             <CardContent className="p-6">
               <div className="flex items-start gap-4">
-                <Avatar className="h-16 w-16">
-                  <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name}`} />
-                  <AvatarFallback>{user.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                <Avatar className="h-12 w-12">
+                  <AvatarImage src={user.avatar_url} alt={user.name} />
+                  <AvatarFallback className="bg-orange-100 text-orange-700">
+                    {user.name.split(' ').map(n => n[0]).join('')}
+                  </AvatarFallback>
                 </Avatar>
-
+                
                 <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-3">
+                  <div className="flex items-center gap-3 mb-2">
                     <h3 className="text-xl font-bold text-orange-900">{user.name}</h3>
-                    {getStatusBadge(user.status)}
+                    {getRoleBadge(user.role)}
+                    <Badge variant={user.is_active ? 'default' : 'destructive'}>
+                      {user.is_active ? 'Активен' : 'Заблокирован'}
+                    </Badge>
                   </div>
-
-                  <div className="grid grid-cols-2 gap-4 text-gray-600">
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Icon name="Mail" className="h-4 w-4" />
-                        <span>{user.email}</span>
-                      </div>
+                  
+                  <div className="space-y-1 text-gray-600 text-sm">
+                    <div className="flex items-center gap-2">
+                      <Icon name="Mail" className="h-4 w-4" />
+                      <span>{user.email}</span>
+                    </div>
+                    {user.phone && (
                       <div className="flex items-center gap-2">
                         <Icon name="Phone" className="h-4 w-4" />
                         <span>{user.phone}</span>
                       </div>
+                    )}
+                    {user.telegram && (
                       <div className="flex items-center gap-2">
-                        <Icon name="Calendar" className="h-4 w-4" />
-                        <span>Регистрация: {new Date(user.registeredAt).toLocaleDateString('ru-RU')}</span>
+                        <Icon name="MessageCircle" className="h-4 w-4" />
+                        <span>{user.telegram}</span>
                       </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Icon name="ClipboardList" className="h-4 w-4" />
-                        <span>Бронирований: {user.bookings}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Icon name="DollarSign" className="h-4 w-4" />
-                        <span>Потрачено: ₽{user.totalSpent.toLocaleString()}</span>
-                      </div>
+                    )}
+                    <div className="flex items-center gap-2">
+                      <Icon name="Calendar" className="h-4 w-4" />
+                      <span>Регистрация: {new Date(user.created_at).toLocaleDateString('ru-RU')}</span>
                     </div>
                   </div>
                 </div>
 
                 <div className="flex gap-2">
-                  {user.status === 'active' ? (
-                    <Button
-                      variant="outline"
-                      onClick={() => handleBlock(user.id)}
-                      className="text-red-600 hover:text-red-700"
-                    >
-                      <Icon name="Ban" className="h-4 w-4 mr-2" />
-                      Заблокировать
-                    </Button>
-                  ) : (
-                    <Button
-                      onClick={() => handleUnblock(user.id)}
-                      className="bg-green-600 hover:bg-green-700"
-                    >
-                      <Icon name="CheckCircle" className="h-4 w-4 mr-2" />
-                      Разблокировать
-                    </Button>
-                  )}
-                  <Button variant="outline" size="icon">
-                    <Icon name="Eye" className="h-4 w-4" />
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => handleToggleStatus(user.id, user.is_active)}
+                  >
+                    {user.is_active ? (
+                      <>
+                        <Icon name="Ban" className="h-4 w-4 mr-1" />
+                        Заблокировать
+                      </>
+                    ) : (
+                      <>
+                        <Icon name="CheckCircle" className="h-4 w-4 mr-1" />
+                        Разблокировать
+                      </>
+                    )}
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    className="text-red-600 hover:text-red-700"
+                    onClick={() => handleDelete(user.id)}
+                  >
+                    <Icon name="Trash2" className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
@@ -162,6 +201,12 @@ const AdminUsersPage = () => {
           </Card>
         ))}
       </div>
+
+      {filteredUsers.length === 0 && (
+        <div className="text-center py-12 text-gray-500">
+          Пользователи не найдены
+        </div>
+      )}
     </div>
   );
 };
