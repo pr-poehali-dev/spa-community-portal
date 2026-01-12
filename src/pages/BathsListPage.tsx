@@ -3,12 +3,20 @@ import { Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import Icon from '@/components/ui/icon';
 import { getBaths, Bath } from '@/lib/api';
 
 const BathsListPage = () => {
   const [baths, setBaths] = useState<Bath[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  const [filterDistrict, setFilterDistrict] = useState<string>('all');
+  const [filterCapacity, setFilterCapacity] = useState<string>('all');
+  const [filterRating, setFilterRating] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [sortBy, setSortBy] = useState<string>('rating');
 
   useEffect(() => {
     getBaths()
@@ -16,6 +24,32 @@ const BathsListPage = () => {
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
+
+  const extractDistrict = (address: string) => {
+    const match = address.match(/р-н\s+([^,]+)/);
+    return match ? match[1].trim() : 'Другой';
+  };
+
+  const districts = Array.from(new Set(baths.map(b => extractDistrict(b.address))));
+
+  const filteredBaths = baths
+    .filter(bath => {
+      if (filterDistrict !== 'all' && extractDistrict(bath.address) !== filterDistrict) return false;
+      if (filterCapacity === '10+' && bath.capacity < 10) return false;
+      if (filterCapacity === '15+' && bath.capacity < 15) return false;
+      if (filterCapacity === '20+' && bath.capacity < 20) return false;
+      if (filterRating === '4+' && bath.rating < 4) return false;
+      if (filterRating === '4.5+' && bath.rating < 4.5) return false;
+      if (searchQuery && !bath.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      if (sortBy === 'rating') return b.rating - a.rating;
+      if (sortBy === 'price-asc') return a.price_per_hour - b.price_per_hour;
+      if (sortBy === 'price-desc') return b.price_per_hour - a.price_per_hour;
+      if (sortBy === 'capacity') return b.capacity - a.capacity;
+      return 0;
+    });
 
   if (loading) {
     return (
@@ -28,12 +62,89 @@ const BathsListPage = () => {
   return (
     <div className="container mx-auto px-4 py-12 animate-fade-in">
       <h1 className="text-4xl md:text-5xl font-serif font-bold text-center mb-4">Бани-партнеры</h1>
-      <p className="text-center text-muted-foreground mb-12 max-w-2xl mx-auto">
+      <p className="text-center text-muted-foreground mb-8 max-w-2xl mx-auto">
         Лучшие бани Москвы с проверенным качеством и традициями
       </p>
 
+      <div className="space-y-4 mb-12">
+        <div className="flex flex-col md:flex-row gap-3">
+          <Input
+            placeholder="Поиск бани по названию..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="md:w-1/3"
+          />
+          
+          <Select value={filterDistrict} onValueChange={setFilterDistrict}>
+            <SelectTrigger className="md:w-[180px]">
+              <SelectValue placeholder="Все районы" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Все районы</SelectItem>
+              {districts.map(district => (
+                <SelectItem key={district} value={district}>{district}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={filterCapacity} onValueChange={setFilterCapacity}>
+            <SelectTrigger className="md:w-[180px]">
+              <SelectValue placeholder="Вместимость" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Любая</SelectItem>
+              <SelectItem value="10+">От 10 человек</SelectItem>
+              <SelectItem value="15+">От 15 человек</SelectItem>
+              <SelectItem value="20+">От 20 человек</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={filterRating} onValueChange={setFilterRating}>
+            <SelectTrigger className="md:w-[180px]">
+              <SelectValue placeholder="Рейтинг" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Любой</SelectItem>
+              <SelectItem value="4+">От 4.0</SelectItem>
+              <SelectItem value="4.5+">От 4.5</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className="md:w-[180px]">
+              <SelectValue placeholder="Сортировка" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="rating">По рейтингу</SelectItem>
+              <SelectItem value="price-asc">Цена: по возрастанию</SelectItem>
+              <SelectItem value="price-desc">Цена: по убыванию</SelectItem>
+              <SelectItem value="capacity">По вместимости</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <span>Найдено: {filteredBaths.length} {filteredBaths.length === 1 ? 'баня' : 'бань'}</span>
+          {(filterDistrict !== 'all' || filterCapacity !== 'all' || filterRating !== 'all' || searchQuery) && (
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => {
+                setFilterDistrict('all');
+                setFilterCapacity('all');
+                setFilterRating('all');
+                setSearchQuery('');
+              }}
+            >
+              <Icon name="X" size={16} className="mr-1" />
+              Сбросить фильтры
+            </Button>
+          )}
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {baths.map((bath) => (
+        {filteredBaths.map((bath) => (
           <Card key={bath.id} className="overflow-hidden hover:shadow-lg transition-all duration-300">
             <Link to={`/bany/${bath.slug}`}>
               <div 
@@ -57,7 +168,11 @@ const BathsListPage = () => {
                 <div className="space-y-2">
                   <div className="flex items-start gap-2 text-sm">
                     <Icon name="MapPin" size={16} className="flex-shrink-0 mt-0.5" />
-                    <span>{bath.address}</span>
+                    <span className="line-clamp-1">{bath.address}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <Icon name="Users" size={16} className="flex-shrink-0" />
+                    <span>До {bath.capacity} человек</span>
                   </div>
                   <p className="text-sm line-clamp-2">{bath.description}</p>
                 </div>
@@ -91,6 +206,25 @@ const BathsListPage = () => {
           </Card>
         ))}
       </div>
+
+      {filteredBaths.length === 0 && (
+        <div className="text-center py-12">
+          <Icon name="Home" size={64} className="mx-auto text-muted-foreground mb-4" />
+          <h3 className="text-xl font-semibold mb-2">Бани не найдены</h3>
+          <p className="text-muted-foreground mb-4">Попробуйте изменить фильтры или поисковый запрос</p>
+          <Button 
+            variant="outline"
+            onClick={() => {
+              setFilterDistrict('all');
+              setFilterCapacity('all');
+              setFilterRating('all');
+              setSearchQuery('');
+            }}
+          >
+            Сбросить фильтры
+          </Button>
+        </div>
+      )}
     </div>
   );
 };
