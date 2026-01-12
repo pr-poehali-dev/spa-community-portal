@@ -13,6 +13,7 @@ import BathDetailPage from "./pages/BathDetailPage";
 import MastersListPage from "./pages/MastersListPage";
 import MasterDetailPage from "./pages/MasterDetailPage";
 import BlogPage from "./pages/BlogPage";
+import BlogPostPage from "./pages/BlogPostPage";
 import AboutPage from "./pages/AboutPage";
 import NotFound from "./pages/NotFound";
 
@@ -34,6 +35,7 @@ const App = () => (
             <Route path="/masters" element={<MastersListPage />} />
             <Route path="/masters/:slug" element={<MasterDetailPage />} />
             <Route path="/blog" element={<BlogPage />} />
+            <Route path="/blog/:slug" element={<BlogPostPage />} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
