@@ -1,14 +1,33 @@
+import { useEffect, useState } from 'react';
 import { useParams, Navigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import Icon from '@/components/ui/icon';
-import { mockBaths } from '@/data/mockData';
+import { getBathBySlug, Bath } from '@/lib/api';
 
 const BathDetailPage = () => {
   const { slug } = useParams();
-  const bath = mockBaths.find(b => b.slug === slug);
+  const [bath, setBath] = useState<Bath | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (slug) {
+      getBathBySlug(slug)
+        .then(data => setBath(data))
+        .catch(console.error)
+        .finally(() => setLoading(false));
+    }
+  }, [slug]);
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-12 flex justify-center">
+        <p className="text-muted-foreground">Загрузка...</p>
+      </div>
+    );
+  }
   
   if (!bath) {
     return <Navigate to="/404" replace />;
@@ -34,7 +53,7 @@ const BathDetailPage = () => {
               <div className="flex items-center gap-2">
                 <Icon name="Star" size={20} className="text-yellow-400 fill-yellow-400" />
                 <span className="font-semibold">{bath.rating}</span>
-                <span className="text-white/80">({bath.reviewsCount} отзывов)</span>
+                <span className="text-white/80">({bath.reviews_count} отзывов)</span>
               </div>
               <div className="flex items-center gap-2">
                 <Icon name="MapPin" size={20} />
@@ -141,7 +160,7 @@ const BathDetailPage = () => {
                 <div className="bg-muted p-4 rounded-lg space-y-2">
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-medium">Стоимость:</span>
-                    <span className="text-2xl font-bold text-primary">{bath.pricePerHour} ₽/час</span>
+                    <span className="text-2xl font-bold text-primary">{bath.price_per_hour} ₽/час</span>
                   </div>
                   <Separator />
                   <div className="flex justify-between items-center text-sm">

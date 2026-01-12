@@ -1,11 +1,30 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import Icon from '@/components/ui/icon';
-import { mockBaths } from '@/data/mockData';
+import { getBaths, Bath } from '@/lib/api';
 
 const BathsListPage = () => {
+  const [baths, setBaths] = useState<Bath[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getBaths()
+      .then(data => setBaths(data))
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-12 flex justify-center">
+        <p className="text-muted-foreground">Загрузка...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto px-4 py-12 animate-fade-in">
       <h1 className="text-4xl md:text-5xl font-serif font-bold text-center mb-4">Бани-партнеры</h1>
@@ -14,7 +33,7 @@ const BathsListPage = () => {
       </p>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {mockBaths.map((bath) => (
+        {baths.map((bath) => (
           <Card key={bath.id} className="overflow-hidden hover:shadow-lg transition-all duration-300">
             <Link to={`/bany/${bath.slug}`}>
               <div 
@@ -60,7 +79,7 @@ const BathsListPage = () => {
                 </div>
                 <div className="flex justify-between items-center pt-2">
                   <div>
-                    <p className="text-2xl font-bold text-primary">{bath.pricePerHour} ₽</p>
+                    <p className="text-2xl font-bold text-primary">{bath.price_per_hour} ₽</p>
                     <p className="text-xs text-muted-foreground">за час</p>
                   </div>
                   <Link to={`/bany/${bath.slug}`}>
