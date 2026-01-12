@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -9,27 +9,53 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import Icon from '@/components/ui/icon';
 
+const generateCaptcha = () => {
+  const num1 = Math.floor(Math.random() * 10) + 1;
+  const num2 = Math.floor(Math.random() * 10) + 1;
+  return { num1, num2, answer: num1 + num2 };
+};
+
 const LoginPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { login, register } = useAuth();
   const { toast } = useToast();
 
-  const [loginData, setLoginData] = useState({ email: '', password: '' });
+  const [loginData, setLoginData] = useState({ email: '', password: '', captcha: '' });
   const [registerData, setRegisterData] = useState({
     email: '',
     password: '',
     confirmPassword: '',
     name: '',
     phone: '',
-    telegram: ''
+    telegram: '',
+    captcha: ''
   });
   const [loading, setLoading] = useState(false);
+  const [loginCaptcha, setLoginCaptcha] = useState(generateCaptcha());
+  const [registerCaptcha, setRegisterCaptcha] = useState(generateCaptcha());
+
+  useEffect(() => {
+    setLoginCaptcha(generateCaptcha());
+    setRegisterCaptcha(generateCaptcha());
+  }, []);
 
   const from = (location.state as any)?.from?.pathname || '/account/dashboard';
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (parseInt(loginData.captcha) !== loginCaptcha.answer) {
+      toast({
+        title: 'Ошибка',
+        description: 'Неверный ответ на вопрос. Попробуйте ещё раз.',
+        variant: 'destructive'
+      });
+      setLoginCaptcha(generateCaptcha());
+      setLoginData({ ...loginData, captcha: '' });
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -52,6 +78,17 @@ const LoginPage = () => {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (parseInt(registerData.captcha) !== registerCaptcha.answer) {
+      toast({
+        title: 'Ошибка',
+        description: 'Неверный ответ на вопрос. Попробуйте ещё раз.',
+        variant: 'destructive'
+      });
+      setRegisterCaptcha(generateCaptcha());
+      setRegisterData({ ...registerData, captcha: '' });
+      return;
+    }
 
     if (registerData.password !== registerData.confirmPassword) {
       toast({
@@ -140,6 +177,27 @@ const LoginPage = () => {
                     required
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="login-captcha" className="flex items-center gap-2">
+                    <Icon name="Shield" className="h-4 w-4 text-orange-600" />
+                    Защита от роботов
+                  </Label>
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 bg-orange-50 border-2 border-orange-200 rounded-lg p-3 text-center font-mono text-lg font-semibold text-orange-800">
+                      {loginCaptcha.num1} + {loginCaptcha.num2} = ?
+                    </div>
+                    <Input
+                      id="login-captcha"
+                      type="number"
+                      placeholder="?"
+                      className="w-20 text-center text-lg font-semibold"
+                      value={loginData.captcha}
+                      onChange={(e) => setLoginData({ ...loginData, captcha: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">Решите пример для продолжения</p>
+                </div>
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? 'Вход...' : 'Войти'}
                 </Button>
@@ -211,6 +269,27 @@ const LoginPage = () => {
                     onChange={(e) => setRegisterData({ ...registerData, confirmPassword: e.target.value })}
                     required
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="register-captcha" className="flex items-center gap-2">
+                    <Icon name="Shield" className="h-4 w-4 text-orange-600" />
+                    Защита от роботов
+                  </Label>
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 bg-orange-50 border-2 border-orange-200 rounded-lg p-3 text-center font-mono text-lg font-semibold text-orange-800">
+                      {registerCaptcha.num1} + {registerCaptcha.num2} = ?
+                    </div>
+                    <Input
+                      id="register-captcha"
+                      type="number"
+                      placeholder="?"
+                      className="w-20 text-center text-lg font-semibold"
+                      value={registerData.captcha}
+                      onChange={(e) => setRegisterData({ ...registerData, captcha: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">Решите пример для продолжения</p>
                 </div>
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? 'Регистрация...' : 'Создать аккаунт'}
