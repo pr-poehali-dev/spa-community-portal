@@ -5,6 +5,9 @@ import secrets
 from datetime import datetime, timedelta
 import psycopg2
 from psycopg2.extras import RealDictCursor
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 def get_db_connection():
     return psycopg2.connect(os.environ['DATABASE_URL'])
@@ -34,6 +37,54 @@ def create_session(user_id: int) -> tuple[str, datetime]:
         conn.close()
     
     return token, expires_at
+
+def send_reset_email(email: str, token: str):
+    """Отправка письма с токеном восстановления пароля"""
+    smtp_host = os.environ.get('SMTP_HOST')
+    smtp_port = int(os.environ.get('SMTP_PORT', '587'))
+    smtp_user = os.environ.get('SMTP_USER')
+    smtp_password = os.environ.get('SMTP_PASSWORD')
+    site_url = os.environ.get('SITE_URL', 'http://localhost:5173')
+    
+    if not all([smtp_host, smtp_user, smtp_password]):
+        raise ValueError('SMTP настройки не заданы')
+    
+    reset_url = f"{site_url}/reset-password?token={token}"
+    
+    msg = MIMEMultipart('alternative')
+    msg['Subject'] = 'Восстановление пароля'
+    msg['From'] = smtp_user
+    msg['To'] = email
+    
+    text = f"""Здравствуйте!
+
+Вы запросили восстановление пароля.
+Перейдите по ссылке для создания нового пароля:
+
+{reset_url}
+
+Ссылка действительна 1 час.
+Если вы не запрашивали восстановление пароля, проигнорируйте это письмо."""
+    
+    html = f"""<html>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+    <h2>Восстановление пароля</h2>
+    <p>Здравствуйте!</p>
+    <p>Вы запросили восстановление пароля.</p>
+    <p>Перейдите по ссылке для создания нового пароля:</p>
+    <p><a href="{reset_url}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; display: inline-block;">Восстановить пароль</a></p>
+    <p style="color: #666; font-size: 14px;">Ссылка действительна 1 час.</p>
+    <p style="color: #666; font-size: 14px;">Если вы не запрашивали восстановление пароля, проигнорируйте это письмо.</p>
+</body>
+</html>"""
+    
+    msg.attach(MIMEText(text, 'plain'))
+    msg.attach(MIMEText(html, 'html'))
+    
+    with smtplib.SMTP(smtp_host, smtp_port) as server:
+        server.starttls()
+        server.login(smtp_user, smtp_password)
+        server.send_message(msg)
 
 def get_user_by_token(token: str) -> dict | None:
     conn = get_db_connection()
@@ -304,6 +355,134 @@ def handler(event: dict, context) -> dict:
                     'headers': headers,
                     'body': json.dumps({'success': True})
                 }
+            
+            elif action == 'request-reset':
+                client_ip = get_client_ip(event)
+                
+                allowed, wait_minutes = check_rate_limit(client_ip, 'password_reset', max_attempts=3, window_minutes=60)
+                if not allowed:
+                    return {
+                        'statusCode': 429,
+                        'headers': headers,
+                        'body': json.dumps({
+                            'error': f'Слишком много попыток. Попробуйте через {wait_minutes} мин.'
+                        })
+                    }
+                
+                email = body.get('email', '').strip().lower()
+                
+                if not email:
+                    return {
+                        'statusCode': 400,
+                        'headers': headers,
+                        'body': json.dumps({'error': 'Email обязателен'})
+                    }
+                
+                conn = get_db_connection()
+                try:
+                    with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                        cur.execute(
+                            """SELECT id FROM t_p13705114_spa_community_portal.users 
+                               WHERE email = %s AND is_active = true""",
+                            (email,)
+                        )
+                        user = cur.fetchone()
+                        
+                        if user:
+                            token = secrets.token_urlsafe(32)
+                            expires_at = datetime.now() + timedelta(hours=1)
+                            
+                            cur.execute(
+                                """INSERT INTO t_p13705114_spa_community_portal.password_reset_tokens 
+                                   (user_id, token, expires_at, ip_address) 
+                                   VALUES (%s, %s, %s, %s)""",
+                                (user['id'], token, expires_at, client_ip)
+                            )
+                            conn.commit()
+                            
+                            try:
+                                send_reset_email(email, token)
+                            except Exception as e:
+                                return {
+                                    'statusCode': 500,
+                                    'headers': headers,
+                                    'body': json.dumps({'error': f'Ошибка отправки письма: {str(e)}'})
+                                }
+                        
+                        return {
+                            'statusCode': 200,
+                            'headers': headers,
+                            'body': json.dumps({
+                                'message': 'Если email существует, письмо с инструкцией отправлено'
+                            })
+                        }
+                finally:
+                    conn.close()
+            
+            elif action == 'reset-password':
+                token = body.get('token', '')
+                new_password = body.get('password', '')
+                
+                if not token or not new_password:
+                    return {
+                        'statusCode': 400,
+                        'headers': headers,
+                        'body': json.dumps({'error': 'Токен и новый пароль обязательны'})
+                    }
+                
+                if len(new_password) < 6:
+                    return {
+                        'statusCode': 400,
+                        'headers': headers,
+                        'body': json.dumps({'error': 'Пароль должен быть не менее 6 символов'})
+                    }
+                
+                conn = get_db_connection()
+                try:
+                    with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                        cur.execute(
+                            """SELECT user_id FROM t_p13705114_spa_community_portal.password_reset_tokens 
+                               WHERE token = %s AND expires_at > NOW() AND used = false""",
+                            (token,)
+                        )
+                        reset = cur.fetchone()
+                        
+                        if not reset:
+                            return {
+                                'statusCode': 400,
+                                'headers': headers,
+                                'body': json.dumps({'error': 'Недействительный или истёкший токен'})
+                            }
+                        
+                        password_hash = hash_password(new_password)
+                        
+                        cur.execute(
+                            """UPDATE t_p13705114_spa_community_portal.users 
+                               SET password_hash = %s WHERE id = %s""",
+                            (password_hash, reset['user_id'])
+                        )
+                        
+                        cur.execute(
+                            """UPDATE t_p13705114_spa_community_portal.password_reset_tokens 
+                               SET used = true WHERE token = %s""",
+                            (token,)
+                        )
+                        
+                        cur.execute(
+                            """DELETE FROM t_p13705114_spa_community_portal.user_sessions 
+                               WHERE user_id = %s""",
+                            (reset['user_id'],)
+                        )
+                        
+                        conn.commit()
+                        
+                        return {
+                            'statusCode': 200,
+                            'headers': headers,
+                            'body': json.dumps({'message': 'Пароль успешно изменён'})
+                        }
+                finally:
+                    conn.close()
         
         elif method == 'GET':
             auth_header = event.get('headers', {}).get('Authorization', '')

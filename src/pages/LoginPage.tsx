@@ -201,6 +201,11 @@ const LoginPage = () => {
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? 'Вход...' : 'Войти'}
                 </Button>
+                <div className="text-center">
+                  <a href="/forgot-password" className="text-sm text-orange-600 hover:text-orange-700 hover:underline">
+                    Забыли пароль?
+                  </a>
+                </div>
               </form>
             </TabsContent>
 
