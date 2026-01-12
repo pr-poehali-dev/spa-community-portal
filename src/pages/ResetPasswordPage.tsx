@@ -52,10 +52,10 @@ const ResetPasswordPage = () => {
     setLoading(true);
 
     try {
-      const response = await fetch('https://functions.poehali.dev/dc13fdd2-eb59-4658-8080-4ab0c13a84af', {
+      const response = await fetch('https://functions.poehali.dev/8abc2d37-746a-4bea-8c9c-f521f735aade', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'reset-password', token, password })
+        body: JSON.stringify({ token, password })
       });
 
       const data = await response.json();

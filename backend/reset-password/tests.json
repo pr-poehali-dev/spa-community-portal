@@ -1,0 +1,29 @@
+{
+  "tests": [
+    {
+      "name": "Missing token or password returns 400",
+      "method": "POST",
+      "body": {
+        "token": "test"
+      },
+      "expectedStatus": 400,
+      "expectedBody": {
+        "error": "string"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Short password returns 400",
+      "method": "POST",
+      "body": {
+        "token": "validtoken",
+        "password": "123"
+      },
+      "expectedStatus": 400,
+      "expectedBody": {
+        "error": "string"
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}
