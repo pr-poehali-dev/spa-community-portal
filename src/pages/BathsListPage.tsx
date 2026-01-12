@@ -67,60 +67,74 @@ const BathsListPage = () => {
       </p>
 
       <div className="space-y-4 mb-12">
-        <div className="flex flex-col md:flex-row gap-3">
-          <Input
-            placeholder="Поиск бани по названию..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="md:w-1/3"
-          />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-muted-foreground">Поиск</label>
+            <Input
+              placeholder="Поиск бани по названию..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
           
-          <Select value={filterDistrict} onValueChange={setFilterDistrict}>
-            <SelectTrigger className="md:w-[180px]">
-              <SelectValue placeholder="Все районы" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Все районы</SelectItem>
-              {districts.map(district => (
-                <SelectItem key={district} value={district}>{district}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-muted-foreground">Район</label>
+            <Select value={filterDistrict} onValueChange={setFilterDistrict}>
+              <SelectTrigger>
+                <SelectValue placeholder="Все районы" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Все районы</SelectItem>
+                {districts.map(district => (
+                  <SelectItem key={district} value={district}>{district}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-          <Select value={filterCapacity} onValueChange={setFilterCapacity}>
-            <SelectTrigger className="md:w-[180px]">
-              <SelectValue placeholder="Вместимость" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Любая</SelectItem>
-              <SelectItem value="10+">От 10 человек</SelectItem>
-              <SelectItem value="15+">От 15 человек</SelectItem>
-              <SelectItem value="20+">От 20 человек</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-muted-foreground">Вместимость</label>
+            <Select value={filterCapacity} onValueChange={setFilterCapacity}>
+              <SelectTrigger>
+                <SelectValue placeholder="Вместимость" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Любая</SelectItem>
+                <SelectItem value="10+">От 10 человек</SelectItem>
+                <SelectItem value="15+">От 15 человек</SelectItem>
+                <SelectItem value="20+">От 20 человек</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-          <Select value={filterRating} onValueChange={setFilterRating}>
-            <SelectTrigger className="md:w-[180px]">
-              <SelectValue placeholder="Рейтинг" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Любой</SelectItem>
-              <SelectItem value="4+">От 4.0</SelectItem>
-              <SelectItem value="4.5+">От 4.5</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-muted-foreground">Рейтинг</label>
+            <Select value={filterRating} onValueChange={setFilterRating}>
+              <SelectTrigger>
+                <SelectValue placeholder="Рейтинг" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Любой</SelectItem>
+                <SelectItem value="4+">От 4.0</SelectItem>
+                <SelectItem value="4.5+">От 4.5</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-          <Select value={sortBy} onValueChange={setSortBy}>
-            <SelectTrigger className="md:w-[180px]">
-              <SelectValue placeholder="Сортировка" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="rating">По рейтингу</SelectItem>
-              <SelectItem value="price-asc">Цена: по возрастанию</SelectItem>
-              <SelectItem value="price-desc">Цена: по убыванию</SelectItem>
-              <SelectItem value="capacity">По вместимости</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-muted-foreground">Сортировка</label>
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger>
+                <SelectValue placeholder="Сортировка" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="rating">По рейтингу</SelectItem>
+                <SelectItem value="price-asc">Цена: по возрастанию</SelectItem>
+                <SelectItem value="price-desc">Цена: по убыванию</SelectItem>
+                <SelectItem value="capacity">По вместимости</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         <div className="flex items-center justify-between text-sm text-muted-foreground">
