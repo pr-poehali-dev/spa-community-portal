@@ -1,0 +1,17 @@
+{
+  "tests": [
+
+    {
+      "name": "Получение данных пользователя по токену",
+      "method": "GET",
+      "headers": {
+        "Authorization": "Bearer test_token"
+      },
+      "expectedStatus": 401,
+      "expectedBody": {
+        "error": "string"
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}

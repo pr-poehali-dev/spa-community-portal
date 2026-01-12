@@ -1,5 +1,8 @@
 import { ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import Icon from '@/components/ui/icon';
 
 interface LayoutProps {
@@ -8,6 +11,7 @@ interface LayoutProps {
 
 export const Layout = ({ children }: LayoutProps) => {
   const location = useLocation();
+  const { user, logout } = useAuth();
   
   const isActive = (path: string) => {
     if (path === '/' && location.pathname === '/') return true;
@@ -23,7 +27,7 @@ export const Layout = ({ children }: LayoutProps) => {
             <Link to="/">
               <h1 className="text-2xl md:text-3xl font-serif font-bold text-primary">спарком.рф</h1>
             </Link>
-            <div className="flex gap-2 md:gap-6">
+            <div className="flex items-center gap-2 md:gap-6">
               <Link
                 to="/"
                 className={`text-sm md:text-base font-medium transition-colors ${
@@ -72,6 +76,50 @@ export const Layout = ({ children }: LayoutProps) => {
               >
                 О нас
               </Link>
+              
+              {user ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="flex items-center gap-2">
+                      <Icon name="User" className="h-4 w-4" />
+                      <span className="hidden md:inline">{user.name}</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuLabel>
+                      <div className="flex flex-col space-y-1">
+                        <p className="text-sm font-medium">{user.name}</p>
+                        <p className="text-xs text-muted-foreground">{user.email}</p>
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link to={user.role === 'participant' ? '/account/dashboard' : `/${user.role}/dashboard`} className="cursor-pointer">
+                        <Icon name="LayoutDashboard" className="mr-2 h-4 w-4" />
+                        Личный кабинет
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to={user.role === 'participant' ? '/account/profile' : `/${user.role}/profile`} className="cursor-pointer">
+                        <Icon name="Settings" className="mr-2 h-4 w-4" />
+                        Настройки
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => logout()} className="cursor-pointer text-destructive">
+                      <Icon name="LogOut" className="mr-2 h-4 w-4" />
+                      Выйти
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <Button asChild variant="default" size="sm">
+                  <Link to="/login">
+                    <Icon name="LogIn" className="h-4 w-4 mr-2" />
+                    Войти
+                  </Link>
+                </Button>
+              )}
             </div>
           </div>
         </div>
