@@ -27,7 +27,9 @@ import AdminUsersPage from "./pages/admin/AdminUsersPage";
 import AdminTransactionsPage from "./pages/admin/AdminTransactionsPage";
 import AdminBookingsPage from "./pages/admin/AdminBookingsPage";
 import AdminSettingsPage from "./pages/admin/AdminSettingsPage";
+import AdminRoleApplicationsPage from "./pages/admin/AdminRoleApplicationsPage";
 import ApplyRolePage from "./pages/ApplyRolePage";
+import AccountPage from "./pages/AccountPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -45,6 +47,7 @@ const App = () => (
               <Route path="saunas" element={<AdminSaunasPage />} />
               <Route path="masters" element={<AdminMastersPage />} />
               <Route path="users" element={<AdminUsersPage />} />
+              <Route path="role-applications" element={<AdminRoleApplicationsPage />} />
               <Route path="transactions" element={<AdminTransactionsPage />} />
               <Route path="bookings" element={<AdminBookingsPage />} />
               <Route path="settings" element={<AdminSettingsPage />} />
@@ -63,6 +66,7 @@ const App = () => (
             <Route path="/login" element={<Layout><LoginPage /></Layout>} />
             <Route path="/forgot-password" element={<Layout><ForgotPasswordPage /></Layout>} />
             <Route path="/reset-password" element={<Layout><ResetPasswordPage /></Layout>} />
+            <Route path="/account" element={<Layout><AccountPage /></Layout>} />
             <Route path="/account/apply-role" element={<Layout><ApplyRolePage /></Layout>} />
             <Route path="*" element={<Layout><NotFound /></Layout>} />
           </Routes>

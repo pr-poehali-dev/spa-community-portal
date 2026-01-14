@@ -24,6 +24,7 @@ const AdminDashboard = () => {
       title: 'Пользователи',
       items: [
         { name: 'Участники', path: '/admin/users', icon: 'User' },
+        { name: 'Заявки на роли', path: '/admin/role-applications', icon: 'UserPlus' },
         { name: 'Партнеры', path: '/admin/partners', icon: 'Briefcase' },
         { name: 'Администраторы', path: '/admin/admins', icon: 'Shield' },
       ]
