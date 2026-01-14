@@ -1,0 +1,32 @@
+{
+  "tests": [
+    {
+      "name": "Get user roles",
+      "method": "GET",
+      "path": "/user/1",
+      "expectedStatus": 200,
+      "expectedBody": {
+        "roles": "array",
+        "reputation": "object"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Apply for organizer role",
+      "method": "POST",
+      "path": "/apply",
+      "body": {
+        "user_id": 1,
+        "role_type": "organizer",
+        "application_data": {
+          "motivation": "Хочу организовывать события"
+        }
+      },
+      "expectedStatus": 201,
+      "expectedBody": {
+        "id": "number"
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}
