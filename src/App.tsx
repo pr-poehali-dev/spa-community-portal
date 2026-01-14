@@ -27,6 +27,7 @@ import AdminUsersPage from "./pages/admin/AdminUsersPage";
 import AdminTransactionsPage from "./pages/admin/AdminTransactionsPage";
 import AdminBookingsPage from "./pages/admin/AdminBookingsPage";
 import AdminSettingsPage from "./pages/admin/AdminSettingsPage";
+import ApplyRolePage from "./pages/ApplyRolePage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -62,6 +63,7 @@ const App = () => (
             <Route path="/login" element={<Layout><LoginPage /></Layout>} />
             <Route path="/forgot-password" element={<Layout><ForgotPasswordPage /></Layout>} />
             <Route path="/reset-password" element={<Layout><ResetPasswordPage /></Layout>} />
+            <Route path="/account/apply-role" element={<Layout><ApplyRolePage /></Layout>} />
             <Route path="*" element={<Layout><NotFound /></Layout>} />
           </Routes>
       </BrowserRouter>

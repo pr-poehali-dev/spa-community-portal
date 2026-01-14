@@ -43,6 +43,12 @@ def handler(event: dict, context) -> dict:
                 result = get_all_users(conn)
             elif resource == 'bookings':
                 result = get_all_bookings(conn)
+            elif resource == 'roles':
+                user_id = query_params.get('user_id')
+                result = get_user_roles(conn, user_id) if user_id else {'error': 'user_id required'}
+            elif resource == 'role_applications':
+                user_id = query_params.get('user_id')
+                result = get_role_applications(conn, user_id)
             else:
                 result = {'error': 'Invalid resource'}
             
@@ -60,6 +66,8 @@ def handler(event: dict, context) -> dict:
                 result = create_master(conn, body)
             elif resource == 'users':
                 result = create_user(conn, body)
+            elif resource == 'role_application':
+                result = create_role_application(conn, body)
             else:
                 result = {'error': 'Invalid resource'}
             
@@ -83,6 +91,8 @@ def handler(event: dict, context) -> dict:
                 result = update_user(conn, item_id, body)
             elif resource == 'bookings':
                 result = update_booking(conn, item_id, body)
+            elif resource == 'role_application':
+                result = review_role_application(conn, item_id, body)
             else:
                 result = {'error': 'Invalid resource'}
             
@@ -324,5 +334,133 @@ def delete_booking(conn, booking_id):
     cursor = conn.cursor()
     cursor.execute("DELETE FROM bookings WHERE id=%s", (booking_id,))
     conn.commit()
+    cursor.close()
+    return {'success': True}
+
+def get_user_roles(conn, user_id):
+    cursor = conn.cursor()
+    cursor.execute(
+        """SELECT ur.*, 
+               CASE ur.role_type
+                   WHEN 'organizer' THEN row_to_json(ol.*)
+                   WHEN 'master' THEN row_to_json(ml.*)
+                   WHEN 'editor' THEN row_to_json(el.*)
+                   ELSE NULL
+               END as level_data
+        FROM user_roles ur
+        LEFT JOIN organizer_levels ol ON ol.user_id = ur.user_id AND ur.role_type = 'organizer'
+        LEFT JOIN master_levels ml ON ml.user_id = ur.user_id AND ur.role_type = 'master'
+        LEFT JOIN editor_levels el ON el.user_id = ur.user_id AND ur.role_type = 'editor'
+        WHERE ur.user_id = %s""",
+        (user_id,)
+    )
+    roles = cursor.fetchall()
+    cursor.execute("SELECT * FROM user_reputation WHERE user_id = %s", (user_id,))
+    reputation = cursor.fetchone()
+    cursor.close()
+    return {
+        'roles': [dict(r) for r in roles],
+        'reputation': dict(reputation) if reputation else None
+    }
+
+def get_role_applications(conn, user_id=None):
+    cursor = conn.cursor()
+    if user_id:
+        cursor.execute(
+            """SELECT ra.*, u.name as reviewer_name
+               FROM role_applications ra
+               LEFT JOIN users u ON u.id = ra.reviewer_id
+               WHERE ra.user_id = %s
+               ORDER BY ra.created_at DESC""",
+            (user_id,)
+        )
+    else:
+        cursor.execute(
+            """SELECT ra.*, u.name as applicant_name, rev.name as reviewer_name
+               FROM role_applications ra
+               LEFT JOIN users u ON u.id = ra.user_id
+               LEFT JOIN users rev ON rev.id = ra.reviewer_id
+               ORDER BY ra.created_at DESC"""
+        )
+    result = cursor.fetchall()
+    cursor.close()
+    return [dict(r) for r in result]
+
+def create_role_application(conn, data):
+    cursor = conn.cursor()
+    user_id = data.get('user_id')
+    role_type = data.get('role_type')
+    application_data = data.get('application_data', {})
+    
+    cursor.execute(
+        "SELECT id FROM role_applications WHERE user_id = %s AND role_type = %s AND status = 'pending'",
+        (user_id, role_type)
+    )
+    if cursor.fetchone():
+        cursor.close()
+        return {'error': 'Application already exists'}
+    
+    cursor.execute(
+        """INSERT INTO role_applications (user_id, role_type, application_data, status)
+           VALUES (%s, %s, %s, 'pending') RETURNING id, created_at""",
+        (user_id, role_type, json.dumps(application_data))
+    )
+    result = cursor.fetchone()
+    conn.commit()
+    cursor.close()
+    return {'success': True, 'id': result['id'], 'created_at': str(result['created_at'])}
+
+def review_role_application(conn, app_id, data):
+    cursor = conn.cursor()
+    reviewer_id = data.get('reviewer_id')
+    status = data.get('status')
+    notes = data.get('notes', '')
+    
+    cursor.execute("SELECT * FROM role_applications WHERE id = %s", (app_id,))
+    application = cursor.fetchone()
+    
+    if not application:
+        cursor.close()
+        return {'error': 'Application not found'}
+    
+    cursor.execute(
+        """UPDATE role_applications
+           SET status = %s, reviewer_id = %s, reviewer_notes = %s, updated_at = NOW()
+           WHERE id = %s""",
+        (status, reviewer_id, notes, app_id)
+    )
+    
+    if status == 'approved':
+        cursor.execute(
+            """INSERT INTO user_roles (user_id, role_type, status, granted_at)
+               VALUES (%s, %s, 'active', NOW())
+               ON CONFLICT (user_id, role_type) DO NOTHING""",
+            (application['user_id'], application['role_type'])
+        )
+        
+        if application['role_type'] == 'organizer':
+            cursor.execute(
+                "INSERT INTO organizer_levels (user_id) VALUES (%s) ON CONFLICT DO NOTHING",
+                (application['user_id'],)
+            )
+        elif application['role_type'] == 'master':
+            cursor.execute(
+                "INSERT INTO master_levels (user_id) VALUES (%s) ON CONFLICT DO NOTHING",
+                (application['user_id'],)
+            )
+        elif application['role_type'] == 'editor':
+            cursor.execute(
+                "INSERT INTO editor_levels (user_id) VALUES (%s) ON CONFLICT DO NOTHING",
+                (application['user_id'],)
+            )
+        
+        cursor.execute(
+            "INSERT INTO user_reputation (user_id) VALUES (%s) ON CONFLICT DO NOTHING",
+            (application['user_id'],)
+        )
+    
+    conn.commit()
+    cursor.close()
+    return {'success': True}
     cursor.close()
     return {'success': True}

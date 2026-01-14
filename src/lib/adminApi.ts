@@ -50,4 +50,20 @@ export const adminApi = {
     update: (id: number, data: any) => request('PUT', 'bookings', data, id),
     delete: (id: number) => request('DELETE', 'bookings', undefined, id),
   },
+  roles: {
+    getUserRoles: (userId: number) => {
+      const url = new URL(ADMIN_API_URL);
+      url.searchParams.set('resource', 'roles');
+      url.searchParams.set('user_id', String(userId));
+      return fetch(url.toString()).then(res => res.json());
+    },
+    getApplications: (userId?: number) => {
+      const url = new URL(ADMIN_API_URL);
+      url.searchParams.set('resource', 'role_applications');
+      if (userId) url.searchParams.set('user_id', String(userId));
+      return fetch(url.toString()).then(res => res.json());
+    },
+    applyForRole: (data: any) => request('POST', 'role_application', data),
+    reviewApplication: (id: number, data: any) => request('PUT', 'role_application', data, id),
+  },
 };
