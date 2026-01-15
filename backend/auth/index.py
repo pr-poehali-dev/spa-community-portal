@@ -1,42 +1,25 @@
 """API для авторизации и управления пользователями"""
 import json
 import os
-import secrets
 from datetime import datetime, timedelta
-import psycopg2
 from psycopg2.extras import RealDictCursor
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
-def get_db_connection():
-    return psycopg2.connect(os.environ['DATABASE_URL'])
+from utils import (
+    get_db_connection,
+    hash_password,
+    verify_password,
+    create_tokens,
+    get_user_by_token,
+    refresh_access_token,
+    revoke_token,
+    check_rate_limit,
+    get_client_ip,
+    generate_token
+)
 
-def hash_password(password: str) -> str:
-    import hashlib
-    return hashlib.sha256(password.encode()).hexdigest()
-
-def verify_password(password: str, password_hash: str) -> bool:
-    return hash_password(password) == password_hash
-
-def create_session(user_id: int) -> tuple[str, datetime]:
-    token = secrets.token_urlsafe(32)
-    expires_at = datetime.now() + timedelta(days=30)
-    
-    conn = get_db_connection()
-    try:
-        with conn.cursor() as cur:
-            cur.execute(
-                """INSERT INTO t_p13705114_spa_community_portal.user_sessions 
-                   (user_id, session_token, expires_at) 
-                   VALUES (%s, %s, %s)""",
-                (user_id, token, expires_at)
-            )
-            conn.commit()
-    finally:
-        conn.close()
-    
-    return token, expires_at
 
 def send_reset_email(email: str, token: str):
     """Отправка письма с токеном восстановления пароля"""
@@ -86,92 +69,19 @@ def send_reset_email(email: str, token: str):
         server.login(smtp_user, smtp_password)
         server.send_message(msg)
 
-def get_user_by_token(token: str) -> dict | None:
-    conn = get_db_connection()
-    try:
-        with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute(
-                """SELECT u.* FROM t_p13705114_spa_community_portal.users u
-                   JOIN t_p13705114_spa_community_portal.user_sessions s ON u.id = s.user_id
-                   WHERE s.session_token = %s AND s.expires_at > NOW() AND u.is_active = true""",
-                (token,)
-            )
-            user = cur.fetchone()
-            return dict(user) if user else None
-    finally:
-        conn.close()
-
-def check_rate_limit(identifier: str, action: str, max_attempts: int = 5, window_minutes: int = 15) -> tuple[bool, int]:
-    conn = get_db_connection()
-    try:
-        with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute(
-                """SELECT * FROM t_p13705114_spa_community_portal.rate_limits 
-                   WHERE identifier = %s AND action = %s""",
-                (identifier, action)
-            )
-            record = cur.fetchone()
-            
-            now = datetime.now()
-            
-            if record:
-                if record['blocked_until'] and record['blocked_until'] > now:
-                    remaining = int((record['blocked_until'] - now).total_seconds() / 60)
-                    return False, remaining
-                
-                time_diff = (now - record['first_attempt']).total_seconds() / 60
-                
-                if time_diff > window_minutes:
-                    cur.execute(
-                        """UPDATE t_p13705114_spa_community_portal.rate_limits 
-                           SET attempts = 1, first_attempt = %s, last_attempt = %s, blocked_until = NULL 
-                           WHERE identifier = %s AND action = %s""",
-                        (now, now, identifier, action)
-                    )
-                    conn.commit()
-                    return True, 0
-                
-                new_attempts = record['attempts'] + 1
-                
-                if new_attempts > max_attempts:
-                    blocked_until = now + timedelta(minutes=window_minutes)
-                    cur.execute(
-                        """UPDATE t_p13705114_spa_community_portal.rate_limits 
-                           SET attempts = %s, last_attempt = %s, blocked_until = %s 
-                           WHERE identifier = %s AND action = %s""",
-                        (new_attempts, now, blocked_until, identifier, action)
-                    )
-                    conn.commit()
-                    return False, window_minutes
-                
-                cur.execute(
-                    """UPDATE t_p13705114_spa_community_portal.rate_limits 
-                       SET attempts = %s, last_attempt = %s 
-                       WHERE identifier = %s AND action = %s""",
-                    (new_attempts, now, identifier, action)
-                )
-                conn.commit()
-                return True, 0
-            else:
-                cur.execute(
-                    """INSERT INTO t_p13705114_spa_community_portal.rate_limits 
-                       (identifier, action, attempts, first_attempt, last_attempt) 
-                       VALUES (%s, %s, 1, %s, %s)""",
-                    (identifier, action, now, now)
-                )
-                conn.commit()
-                return True, 0
-    finally:
-        conn.close()
-
-def get_client_ip(event: dict) -> str:
-    headers = event.get('headers', {})
-    forwarded = headers.get('X-Forwarded-For', '')
-    if forwarded:
-        return forwarded.split(',')[0].strip()
-    return headers.get('X-Real-IP', event.get('requestContext', {}).get('identity', {}).get('sourceIp', 'unknown'))
 
 def handler(event: dict, context) -> dict:
+    """
+    Обработчик авторизации и регистрации пользователей
+    
+    Endpoints:
+    - POST /login - вход (email + password)
+    - POST /register - регистрация
+    - POST /refresh - обновление access токена
+    - POST /logout - выход (отзыв токенов)
+    - POST /reset-password - запрос на сброс пароля
+    - POST /confirm-reset - подтверждение сброса пароля
+    """
     method = event.get('httpMethod', 'GET')
     
     if method == 'OPTIONS':
@@ -179,11 +89,12 @@ def handler(event: dict, context) -> dict:
             'statusCode': 200,
             'headers': {
                 'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-                'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+                'Access-Control-Allow-Methods': 'POST, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type, X-Authorization',
                 'Access-Control-Max-Age': '86400'
             },
-            'body': ''
+            'body': '',
+            'isBase64Encoded': False
         }
     
     headers = {
@@ -192,335 +103,408 @@ def handler(event: dict, context) -> dict:
     }
     
     try:
-        if method == 'POST':
-            body = json.loads(event.get('body', '{}'))
-            action = body.get('action')
-            
-            if action == 'login':
-                client_ip = get_client_ip(event)
-                email = body.get('email', '').strip().lower()
-                password = body.get('password', '')
-                
-                allowed, wait_minutes = check_rate_limit(client_ip, 'login', max_attempts=5, window_minutes=15)
-                if not allowed:
-                    return {
-                        'statusCode': 429,
-                        'headers': headers,
-                        'body': json.dumps({
-                            'error': f'Слишком много попыток входа. Попробуйте через {wait_minutes} мин.'
-                        })
-                    }
-                
-                if not email or not password:
-                    return {
-                        'statusCode': 400,
-                        'headers': headers,
-                        'body': json.dumps({'error': 'Email и пароль обязательны'})
-                    }
-                
-                conn = get_db_connection()
-                try:
-                    with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                        cur.execute(
-                            """SELECT * FROM t_p13705114_spa_community_portal.users 
-                               WHERE email = %s AND is_active = true""",
-                            (email,)
-                        )
-                        user = cur.fetchone()
-                        
-                        if not user or not verify_password(password, user['password_hash']):
-                            return {
-                                'statusCode': 401,
-                                'headers': headers,
-                                'body': json.dumps({'error': 'Неверный email или пароль'})
-                            }
-                        
-                        token, expires_at = create_session(user['id'])
-                        
-                        user_data = dict(user)
-                        del user_data['password_hash']
-                        
-                        return {
-                            'statusCode': 200,
-                            'headers': headers,
-                            'body': json.dumps({
-                                'token': token,
-                                'expires_at': expires_at.isoformat(),
-                                'user': user_data
-                            })
-                        }
-                finally:
-                    conn.close()
-            
-            elif action == 'register':
-                client_ip = get_client_ip(event)
-                
-                allowed, wait_minutes = check_rate_limit(client_ip, 'register', max_attempts=3, window_minutes=60)
-                if not allowed:
-                    return {
-                        'statusCode': 429,
-                        'headers': headers,
-                        'body': json.dumps({
-                            'error': f'Слишком много попыток регистрации. Попробуйте через {wait_minutes} мин.'
-                        })
-                    }
-                
-                email = body.get('email', '').strip().lower()
-                password = body.get('password', '')
-                name = body.get('name', '').strip()
-                phone = body.get('phone', '').strip()
-                telegram = body.get('telegram', '').strip()
-                
-                if not email or not password or not name:
-                    return {
-                        'statusCode': 400,
-                        'headers': headers,
-                        'body': json.dumps({'error': 'Email, пароль и имя обязательны'})
-                    }
-                
-                if len(password) < 6:
-                    return {
-                        'statusCode': 400,
-                        'headers': headers,
-                        'body': json.dumps({'error': 'Пароль должен быть не менее 6 символов'})
-                    }
-                
-                conn = get_db_connection()
-                try:
-                    with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                        cur.execute(
-                            """SELECT id FROM t_p13705114_spa_community_portal.users WHERE email = %s""",
-                            (email,)
-                        )
-                        if cur.fetchone():
-                            return {
-                                'statusCode': 409,
-                                'headers': headers,
-                                'body': json.dumps({'error': 'Пользователь с таким email уже существует'})
-                            }
-                        
-                        password_hash = hash_password(password)
-                        cur.execute(
-                            """INSERT INTO t_p13705114_spa_community_portal.users 
-                               (email, password_hash, name, phone, telegram, role) 
-                               VALUES (%s, %s, %s, %s, %s, 'participant') 
-                               RETURNING id, email, name, phone, telegram, role, avatar_url, created_at""",
-                            (email, password_hash, name, phone or None, telegram or None)
-                        )
-                        conn.commit()
-                        user = cur.fetchone()
-                        
-                        token, expires_at = create_session(user['id'])
-                        user_data = dict(user)
-                        
-                        return {
-                            'statusCode': 201,
-                            'headers': headers,
-                            'body': json.dumps({
-                                'token': token,
-                                'expires_at': expires_at.isoformat(),
-                                'user': {
-                                    'id': user_data['id'],
-                                    'email': user_data['email'],
-                                    'name': user_data['name'],
-                                    'phone': user_data.get('phone'),
-                                    'telegram': user_data.get('telegram'),
-                                    'role': user_data['role'],
-                                    'avatar_url': user_data.get('avatar_url')
-                                }
-                            })
-                        }
-                finally:
-                    conn.close()
-            
-            elif action == 'logout':
-                auth_header = event.get('headers', {}).get('Authorization', '')
-                token = auth_header.replace('Bearer ', '')
-                
-                if token:
-                    conn = get_db_connection()
-                    try:
-                        with conn.cursor() as cur:
-                            cur.execute(
-                                """UPDATE t_p13705114_spa_community_portal.user_sessions 
-                                   SET expires_at = NOW() WHERE session_token = %s""",
-                                (token,)
-                            )
-                            conn.commit()
-                    finally:
-                        conn.close()
-                
-                return {
-                    'statusCode': 200,
-                    'headers': headers,
-                    'body': json.dumps({'success': True})
-                }
-            
-            elif action == 'request-reset':
-                client_ip = get_client_ip(event)
-                
-                allowed, wait_minutes = check_rate_limit(client_ip, 'password_reset', max_attempts=3, window_minutes=60)
-                if not allowed:
-                    return {
-                        'statusCode': 429,
-                        'headers': headers,
-                        'body': json.dumps({
-                            'error': f'Слишком много попыток. Попробуйте через {wait_minutes} мин.'
-                        })
-                    }
-                
-                email = body.get('email', '').strip().lower()
-                
-                if not email:
-                    return {
-                        'statusCode': 400,
-                        'headers': headers,
-                        'body': json.dumps({'error': 'Email обязателен'})
-                    }
-                
-                conn = get_db_connection()
-                try:
-                    with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                        cur.execute(
-                            """SELECT id FROM t_p13705114_spa_community_portal.users 
-                               WHERE email = %s AND is_active = true""",
-                            (email,)
-                        )
-                        user = cur.fetchone()
-                        
-                        if user:
-                            token = secrets.token_urlsafe(32)
-                            expires_at = datetime.now() + timedelta(hours=1)
-                            
-                            cur.execute(
-                                """INSERT INTO t_p13705114_spa_community_portal.password_reset_tokens 
-                                   (user_id, token, expires_at, ip_address) 
-                                   VALUES (%s, %s, %s, %s)""",
-                                (user['id'], token, expires_at, client_ip)
-                            )
-                            conn.commit()
-                            
-                            try:
-                                send_reset_email(email, token)
-                            except Exception as e:
-                                return {
-                                    'statusCode': 500,
-                                    'headers': headers,
-                                    'body': json.dumps({'error': f'Ошибка отправки письма: {str(e)}'})
-                                }
-                        
-                        return {
-                            'statusCode': 200,
-                            'headers': headers,
-                            'body': json.dumps({
-                                'message': 'Если email существует, письмо с инструкцией отправлено'
-                            })
-                        }
-                finally:
-                    conn.close()
-            
-            elif action == 'reset-password':
-                token = body.get('token', '')
-                new_password = body.get('password', '')
-                
-                if not token or not new_password:
-                    return {
-                        'statusCode': 400,
-                        'headers': headers,
-                        'body': json.dumps({'error': 'Токен и новый пароль обязательны'})
-                    }
-                
-                if len(new_password) < 6:
-                    return {
-                        'statusCode': 400,
-                        'headers': headers,
-                        'body': json.dumps({'error': 'Пароль должен быть не менее 6 символов'})
-                    }
-                
-                conn = get_db_connection()
-                try:
-                    with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                        cur.execute(
-                            """SELECT user_id FROM t_p13705114_spa_community_portal.password_reset_tokens 
-                               WHERE token = %s AND expires_at > NOW() AND used = false""",
-                            (token,)
-                        )
-                        reset = cur.fetchone()
-                        
-                        if not reset:
-                            return {
-                                'statusCode': 400,
-                                'headers': headers,
-                                'body': json.dumps({'error': 'Недействительный или истёкший токен'})
-                            }
-                        
-                        password_hash = hash_password(new_password)
-                        
-                        cur.execute(
-                            """UPDATE t_p13705114_spa_community_portal.users 
-                               SET password_hash = %s WHERE id = %s""",
-                            (password_hash, reset['user_id'])
-                        )
-                        
-                        cur.execute(
-                            """UPDATE t_p13705114_spa_community_portal.password_reset_tokens 
-                               SET used = true WHERE token = %s""",
-                            (token,)
-                        )
-                        
-                        cur.execute(
-                            """DELETE FROM t_p13705114_spa_community_portal.user_sessions 
-                               WHERE user_id = %s""",
-                            (reset['user_id'],)
-                        )
-                        
-                        conn.commit()
-                        
-                        return {
-                            'statusCode': 200,
-                            'headers': headers,
-                            'body': json.dumps({'message': 'Пароль успешно изменён'})
-                        }
-                finally:
-                    conn.close()
-        
-        elif method == 'GET':
-            auth_header = event.get('headers', {}).get('Authorization', '')
-            token = auth_header.replace('Bearer ', '')
-            
-            if not token:
-                return {
-                    'statusCode': 401,
-                    'headers': headers,
-                    'body': json.dumps({'error': 'Не авторизован'})
-                }
-            
-            user = get_user_by_token(token)
-            
-            if not user:
-                return {
-                    'statusCode': 401,
-                    'headers': headers,
-                    'body': json.dumps({'error': 'Сессия истекла'})
-                }
-            
-            del user['password_hash']
-            
+        if method != 'POST':
             return {
-                'statusCode': 200,
+                'statusCode': 405,
                 'headers': headers,
-                'body': json.dumps({'user': user})
+                'body': json.dumps({'error': 'Method not allowed'}),
+                'isBase64Encoded': False
+            }
+        
+        body = json.loads(event.get('body', '{}'))
+        action = body.get('action')
+        
+        if action == 'login':
+            return handle_login(event, body, headers)
+        elif action == 'register':
+            return handle_register(event, body, headers)
+        elif action == 'refresh':
+            return handle_refresh(body, headers)
+        elif action == 'logout':
+            return handle_logout(event, headers)
+        elif action == 'reset-password':
+            return handle_reset_password(event, body, headers)
+        elif action == 'confirm-reset':
+            return handle_confirm_reset(body, headers)
+        else:
+            return {
+                'statusCode': 400,
+                'headers': headers,
+                'body': json.dumps({'error': 'Неизвестное действие'}),
+                'isBase64Encoded': False
             }
     
     except Exception as e:
         return {
             'statusCode': 500,
             'headers': headers,
-            'body': json.dumps({'error': f'Ошибка сервера: {str(e)}'})
+            'body': json.dumps({'error': str(e)}),
+            'isBase64Encoded': False
+        }
+
+
+def handle_login(event: dict, body: dict, headers: dict) -> dict:
+    """Обработка входа"""
+    client_ip = get_client_ip(event)
+    email = body.get('email', '').strip().lower()
+    password = body.get('password', '')
+    
+    allowed, wait_minutes = check_rate_limit(client_ip, 'login', max_attempts=5, window_minutes=15)
+    if not allowed:
+        return {
+            'statusCode': 429,
+            'headers': headers,
+            'body': json.dumps({
+                'error': f'Слишком много попыток входа. Попробуйте через {wait_minutes} мин.'
+            }),
+            'isBase64Encoded': False
         }
     
+    if not email or not password:
+        return {
+            'statusCode': 400,
+            'headers': headers,
+            'body': json.dumps({'error': 'Email и пароль обязательны'}),
+            'isBase64Encoded': False
+        }
+    
+    conn = get_db_connection()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """SELECT * FROM t_p13705114_spa_community_portal.users 
+                   WHERE email = %s AND is_active = true""",
+                (email,)
+            )
+            user = cur.fetchone()
+            
+            if not user or not verify_password(password, user['password_hash']):
+                return {
+                    'statusCode': 401,
+                    'headers': headers,
+                    'body': json.dumps({'error': 'Неверный email или пароль'}),
+                    'isBase64Encoded': False
+                }
+            
+            access_token, refresh_token, access_exp, refresh_exp = create_tokens(user['id'])
+            
+            user_data = {
+                'id': user['id'],
+                'email': user['email'],
+                'phone': user['phone'],
+                'first_name': user['first_name'],
+                'last_name': user['last_name'],
+                'created_at': user['created_at'].isoformat() if user['created_at'] else None
+            }
+            
+            return {
+                'statusCode': 200,
+                'headers': headers,
+                'body': json.dumps({
+                    'access_token': access_token,
+                    'refresh_token': refresh_token,
+                    'expires_in': 3600,
+                    'user': user_data
+                }),
+                'isBase64Encoded': False
+            }
+    finally:
+        conn.close()
+
+
+def handle_register(event: dict, body: dict, headers: dict) -> dict:
+    """Обработка регистрации"""
+    client_ip = get_client_ip(event)
+    email = body.get('email', '').strip().lower()
+    password = body.get('password', '')
+    phone = body.get('phone', '').strip()
+    first_name = body.get('first_name', '').strip()
+    last_name = body.get('last_name', '').strip()
+    
+    allowed, wait_minutes = check_rate_limit(client_ip, 'register', max_attempts=3, window_minutes=60)
+    if not allowed:
+        return {
+            'statusCode': 429,
+            'headers': headers,
+            'body': json.dumps({
+                'error': f'Слишком много попыток регистрации. Попробуйте через {wait_minutes} мин.'
+            }),
+            'isBase64Encoded': False
+        }
+    
+    if not all([email, password, first_name, last_name]):
+        return {
+            'statusCode': 400,
+            'headers': headers,
+            'body': json.dumps({'error': 'Все поля обязательны'}),
+            'isBase64Encoded': False
+        }
+    
+    if len(password) < 6:
+        return {
+            'statusCode': 400,
+            'headers': headers,
+            'body': json.dumps({'error': 'Пароль должен быть не менее 6 символов'}),
+            'isBase64Encoded': False
+        }
+    
+    conn = get_db_connection()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """SELECT id FROM t_p13705114_spa_community_portal.users WHERE email = %s""",
+                (email,)
+            )
+            if cur.fetchone():
+                return {
+                    'statusCode': 409,
+                    'headers': headers,
+                    'body': json.dumps({'error': 'Email уже зарегистрирован'}),
+                    'isBase64Encoded': False
+                }
+            
+            password_hash = hash_password(password)
+            
+            cur.execute(
+                """INSERT INTO t_p13705114_spa_community_portal.users 
+                   (email, password_hash, phone, first_name, last_name, is_active) 
+                   VALUES (%s, %s, %s, %s, %s, true) RETURNING id, email, phone, first_name, last_name, created_at""",
+                (email, password_hash, phone, first_name, last_name)
+            )
+            user = cur.fetchone()
+            conn.commit()
+            
+            access_token, refresh_token, access_exp, refresh_exp = create_tokens(user['id'])
+            
+            user_data = {
+                'id': user['id'],
+                'email': user['email'],
+                'phone': user['phone'],
+                'first_name': user['first_name'],
+                'last_name': user['last_name'],
+                'created_at': user['created_at'].isoformat() if user['created_at'] else None
+            }
+            
+            return {
+                'statusCode': 201,
+                'headers': headers,
+                'body': json.dumps({
+                    'access_token': access_token,
+                    'refresh_token': refresh_token,
+                    'expires_in': 3600,
+                    'user': user_data
+                }),
+                'isBase64Encoded': False
+            }
+    finally:
+        conn.close()
+
+
+def handle_refresh(body: dict, headers: dict) -> dict:
+    """Обновление access токена"""
+    refresh_token = body.get('refresh_token')
+    
+    if not refresh_token:
+        return {
+            'statusCode': 400,
+            'headers': headers,
+            'body': json.dumps({'error': 'Refresh token обязателен'}),
+            'isBase64Encoded': False
+        }
+    
+    result = refresh_access_token(refresh_token)
+    
+    if not result:
+        return {
+            'statusCode': 401,
+            'headers': headers,
+            'body': json.dumps({'error': 'Невалидный refresh token'}),
+            'isBase64Encoded': False
+        }
+    
+    new_access_token, expires_at = result
+    
     return {
-        'statusCode': 405,
+        'statusCode': 200,
         'headers': headers,
-        'body': json.dumps({'error': 'Метод не поддерживается'})
+        'body': json.dumps({
+            'access_token': new_access_token,
+            'expires_in': 3600
+        }),
+        'isBase64Encoded': False
     }
+
+
+def handle_logout(event: dict, headers: dict) -> dict:
+    """Выход (отзыв токенов)"""
+    auth_header = event.get('headers', {}).get('X-Authorization', '')
+    
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return {
+            'statusCode': 401,
+            'headers': headers,
+            'body': json.dumps({'error': 'Требуется авторизация'}),
+            'isBase64Encoded': False
+        }
+    
+    access_token = auth_header.replace('Bearer ', '').strip()
+    
+    revoked = revoke_token(access_token, token_type='access')
+    
+    if revoked:
+        return {
+            'statusCode': 200,
+            'headers': headers,
+            'body': json.dumps({'message': 'Вы вышли из системы'}),
+            'isBase64Encoded': False
+        }
+    else:
+        return {
+            'statusCode': 404,
+            'headers': headers,
+            'body': json.dumps({'error': 'Сессия не найдена'}),
+            'isBase64Encoded': False
+        }
+
+
+def handle_reset_password(event: dict, body: dict, headers: dict) -> dict:
+    """Запрос на сброс пароля"""
+    client_ip = get_client_ip(event)
+    email = body.get('email', '').strip().lower()
+    
+    allowed, wait_minutes = check_rate_limit(client_ip, 'reset-password', max_attempts=3, window_minutes=60)
+    if not allowed:
+        return {
+            'statusCode': 429,
+            'headers': headers,
+            'body': json.dumps({
+                'error': f'Слишком много попыток. Попробуйте через {wait_minutes} мин.'
+            }),
+            'isBase64Encoded': False
+        }
+    
+    if not email:
+        return {
+            'statusCode': 400,
+            'headers': headers,
+            'body': json.dumps({'error': 'Email обязателен'}),
+            'isBase64Encoded': False
+        }
+    
+    conn = get_db_connection()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """SELECT id FROM t_p13705114_spa_community_portal.users 
+                   WHERE email = %s AND is_active = true""",
+                (email,)
+            )
+            user = cur.fetchone()
+            
+            if not user:
+                return {
+                    'statusCode': 200,
+                    'headers': headers,
+                    'body': json.dumps({'message': 'Если email существует, письмо отправлено'}),
+                    'isBase64Encoded': False
+                }
+            
+            token = generate_token(32)
+            expires_at = datetime.now() + timedelta(hours=1)
+            
+            cur.execute(
+                """INSERT INTO t_p13705114_spa_community_portal.password_reset_tokens 
+                   (user_id, token, expires_at) VALUES (%s, %s, %s)""",
+                (user['id'], token, expires_at)
+            )
+            conn.commit()
+            
+            try:
+                send_reset_email(email, token)
+            except Exception as e:
+                return {
+                    'statusCode': 500,
+                    'headers': headers,
+                    'body': json.dumps({'error': f'Ошибка отправки письма: {str(e)}'}),
+                    'isBase64Encoded': False
+                }
+            
+            return {
+                'statusCode': 200,
+                'headers': headers,
+                'body': json.dumps({'message': 'Письмо с инструкциями отправлено'}),
+                'isBase64Encoded': False
+            }
+    finally:
+        conn.close()
+
+
+def handle_confirm_reset(body: dict, headers: dict) -> dict:
+    """Подтверждение сброса пароля"""
+    token = body.get('token', '').strip()
+    new_password = body.get('new_password', '')
+    
+    if not token or not new_password:
+        return {
+            'statusCode': 400,
+            'headers': headers,
+            'body': json.dumps({'error': 'Токен и новый пароль обязательны'}),
+            'isBase64Encoded': False
+        }
+    
+    if len(new_password) < 6:
+        return {
+            'statusCode': 400,
+            'headers': headers,
+            'body': json.dumps({'error': 'Пароль должен быть не менее 6 символов'}),
+            'isBase64Encoded': False
+        }
+    
+    conn = get_db_connection()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """SELECT user_id FROM t_p13705114_spa_community_portal.password_reset_tokens 
+                   WHERE token = %s AND expires_at > NOW() AND used_at IS NULL""",
+                (token,)
+            )
+            reset_token = cur.fetchone()
+            
+            if not reset_token:
+                return {
+                    'statusCode': 400,
+                    'headers': headers,
+                    'body': json.dumps({'error': 'Невалидный или истёкший токен'}),
+                    'isBase64Encoded': False
+                }
+            
+            password_hash = hash_password(new_password)
+            
+            cur.execute(
+                """UPDATE t_p13705114_spa_community_portal.users 
+                   SET password_hash = %s WHERE id = %s""",
+                (password_hash, reset_token['user_id'])
+            )
+            
+            cur.execute(
+                """UPDATE t_p13705114_spa_community_portal.password_reset_tokens 
+                   SET used_at = NOW() WHERE token = %s""",
+                (token,)
+            )
+            
+            cur.execute(
+                """DELETE FROM t_p13705114_spa_community_portal.user_sessions 
+                   WHERE user_id = %s""",
+                (reset_token['user_id'],)
+            )
+            
+            conn.commit()
+            
+            return {
+                'statusCode': 200,
+                'headers': headers,
+                'body': json.dumps({'message': 'Пароль успешно изменён'}),
+                'isBase64Encoded': False
+            }
+    finally:
+        conn.close()

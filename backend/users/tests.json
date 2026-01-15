@@ -1,0 +1,63 @@
+{
+  "tests": [
+    {
+      "name": "OPTIONS request (CORS)",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200,
+      "expectedHeaders": {
+        "Access-Control-Allow-Methods": "GET, PUT, OPTIONS"
+      }
+    },
+    {
+      "name": "Get current user without auth",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 401,
+      "expectedBody": {
+        "error": "string"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Get current user with invalid token",
+      "method": "GET",
+      "path": "/",
+      "headers": {
+        "X-Authorization": "Bearer invalid_token_12345"
+      },
+      "expectedStatus": 401,
+      "expectedBody": {
+        "error": "string"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Update profile without auth",
+      "method": "PUT",
+      "path": "/",
+      "body": {
+        "first_name": "Test",
+        "last_name": "User"
+      },
+      "expectedStatus": 401,
+      "expectedBody": {
+        "error": "string"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Get public profile with invalid ID",
+      "method": "GET",
+      "path": "/",
+      "headers": {
+        "X-Authorization": "Bearer test_token"
+      },
+      "expectedStatus": 401,
+      "expectedBody": {
+        "error": "string"
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}

@@ -1,13 +1,106 @@
 {
   "tests": [
-
     {
-      "name": "Получение данных пользователя по токену",
-      "method": "GET",
-      "headers": {
-        "Authorization": "Bearer test_token"
+      "name": "OPTIONS request (CORS preflight)",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200,
+      "expectedHeaders": {
+        "Access-Control-Allow-Methods": "POST, OPTIONS"
+      }
+    },
+    {
+      "name": "Login with invalid credentials",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "action": "login",
+        "email": "nonexistent@test.com",
+        "password": "wrongpass"
       },
       "expectedStatus": 401,
+      "expectedBody": {
+        "error": "string"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Login without required fields",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "action": "login",
+        "email": ""
+      },
+      "expectedStatus": 400,
+      "expectedBody": {
+        "error": "string"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Register with incomplete data",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "action": "register",
+        "email": "test@example.com",
+        "password": "123"
+      },
+      "expectedStatus": 400,
+      "expectedBody": {
+        "error": "string"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Refresh with invalid token",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "action": "refresh",
+        "refresh_token": "invalid_token_here"
+      },
+      "expectedStatus": 401,
+      "expectedBody": {
+        "error": "string"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Logout without authorization",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "action": "logout"
+      },
+      "expectedStatus": 401,
+      "expectedBody": {
+        "error": "string"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Reset password without email",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "action": "reset-password"
+      },
+      "expectedStatus": 400,
+      "expectedBody": {
+        "error": "string"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Unknown action",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "action": "unknown_action"
+      },
+      "expectedStatus": 400,
       "expectedBody": {
         "error": "string"
       },

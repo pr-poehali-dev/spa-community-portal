@@ -49,6 +49,8 @@ def handler(event: dict, context) -> dict:
             elif resource == 'role_applications':
                 user_id = query_params.get('user_id')
                 result = get_role_applications(conn, user_id)
+            elif resource == 'stats':
+                result = get_admin_stats(conn)
             else:
                 result = {'error': 'Invalid resource'}
             
@@ -270,10 +272,31 @@ def delete_master(conn, master_id):
 
 def get_all_users(conn):
     cursor = conn.cursor()
-    cursor.execute("SELECT id, email, name, phone, telegram, role, is_active, created_at FROM users ORDER BY created_at DESC")
+    cursor.execute(
+        """SELECT u.id, u.email, u.first_name, u.last_name, u.created_at, u.is_active,
+           COUNT(DISTINCT ur.id) as roles_count
+           FROM t_p13705114_spa_community_portal.users u
+           LEFT JOIN t_p13705114_spa_community_portal.user_roles ur ON u.id = ur.user_id
+           GROUP BY u.id
+           ORDER BY u.created_at DESC LIMIT 100"""
+    )
     result = cursor.fetchall()
     cursor.close()
     return [dict(row) for row in result]
+
+def get_admin_stats(conn):
+    cursor = conn.cursor()
+    cursor.execute(
+        """SELECT 
+            (SELECT COUNT(*) FROM t_p13705114_spa_community_portal.users WHERE is_active = true) as active_users,
+            (SELECT COUNT(*) FROM t_p13705114_spa_community_portal.role_applications WHERE status = 'pending') as pending_applications,
+            (SELECT COUNT(*) FROM t_p13705114_spa_community_portal.user_roles WHERE status = 'approved') as approved_roles,
+            (SELECT COUNT(*) FROM t_p13705114_spa_community_portal.events) as total_events,
+            (SELECT COUNT(*) FROM t_p13705114_spa_community_portal.bookings) as total_bookings"""
+    )
+    result = cursor.fetchone()
+    cursor.close()
+    return dict(result)
 
 def create_user(conn, data):
     cursor = conn.cursor()
@@ -367,19 +390,18 @@ def get_role_applications(conn, user_id=None):
     cursor = conn.cursor()
     if user_id:
         cursor.execute(
-            """SELECT ra.*, u.name as reviewer_name
-               FROM role_applications ra
-               LEFT JOIN users u ON u.id = ra.reviewer_id
+            """SELECT ra.*, u.first_name, u.last_name, u.email
+               FROM t_p13705114_spa_community_portal.role_applications ra
+               JOIN t_p13705114_spa_community_portal.users u ON ra.user_id = u.id
                WHERE ra.user_id = %s
                ORDER BY ra.created_at DESC""",
             (user_id,)
         )
     else:
         cursor.execute(
-            """SELECT ra.*, u.name as applicant_name, rev.name as reviewer_name
-               FROM role_applications ra
-               LEFT JOIN users u ON u.id = ra.user_id
-               LEFT JOIN users rev ON rev.id = ra.reviewer_id
+            """SELECT ra.*, u.first_name, u.last_name, u.email
+               FROM t_p13705114_spa_community_portal.role_applications ra
+               JOIN t_p13705114_spa_community_portal.users u ON ra.user_id = u.id
                ORDER BY ra.created_at DESC"""
         )
     result = cursor.fetchall()
@@ -412,55 +434,43 @@ def create_role_application(conn, data):
 
 def review_role_application(conn, app_id, data):
     cursor = conn.cursor()
-    reviewer_id = data.get('reviewer_id')
     status = data.get('status')
-    notes = data.get('notes', '')
+    rejection_reason = data.get('rejection_reason')
     
-    cursor.execute("SELECT * FROM role_applications WHERE id = %s", (app_id,))
+    if status not in ['approved', 'rejected']:
+        cursor.close()
+        return {'error': 'Invalid status'}
+    
+    cursor.execute(
+        "SELECT * FROM t_p13705114_spa_community_portal.role_applications WHERE id = %s",
+        (app_id,)
+    )
     application = cursor.fetchone()
     
     if not application:
         cursor.close()
         return {'error': 'Application not found'}
     
-    cursor.execute(
-        """UPDATE role_applications
-           SET status = %s, reviewer_id = %s, reviewer_notes = %s, updated_at = NOW()
-           WHERE id = %s""",
-        (status, reviewer_id, notes, app_id)
-    )
+    if application['status'] != 'pending':
+        cursor.close()
+        return {'error': 'Application already reviewed'}
     
     if status == 'approved':
         cursor.execute(
-            """INSERT INTO user_roles (user_id, role_type, status, granted_at)
-               VALUES (%s, %s, 'active', NOW())
-               ON CONFLICT (user_id, role_type) DO NOTHING""",
+            """INSERT INTO t_p13705114_spa_community_portal.user_roles
+               (user_id, role_type, level, status, approved_at, created_at)
+               VALUES (%s, %s, 1, 'approved', NOW(), NOW())""",
             (application['user_id'], application['role_type'])
         )
         
-        if application['role_type'] == 'organizer':
-            cursor.execute(
-                "INSERT INTO organizer_levels (user_id) VALUES (%s) ON CONFLICT DO NOTHING",
-                (application['user_id'],)
-            )
-        elif application['role_type'] == 'master':
-            cursor.execute(
-                "INSERT INTO master_levels (user_id) VALUES (%s) ON CONFLICT DO NOTHING",
-                (application['user_id'],)
-            )
-        elif application['role_type'] == 'editor':
-            cursor.execute(
-                "INSERT INTO editor_levels (user_id) VALUES (%s) ON CONFLICT DO NOTHING",
-                (application['user_id'],)
-            )
-        
-        cursor.execute(
-            "INSERT INTO user_reputation (user_id) VALUES (%s) ON CONFLICT DO NOTHING",
-            (application['user_id'],)
-        )
+    
+    cursor.execute(
+        """UPDATE t_p13705114_spa_community_portal.role_applications
+           SET status = %s, reviewed_at = NOW(), rejection_reason = %s
+           WHERE id = %s""",
+        (status, rejection_reason if status == 'rejected' else None, app_id)
+    )
     
     conn.commit()
-    cursor.close()
-    return {'success': True}
     cursor.close()
     return {'success': True}
