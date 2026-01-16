@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
+import { Textarea } from '@/components/ui/textarea';
 import Icon from '@/components/ui/icon';
 
 interface BlogPost {
@@ -41,6 +42,8 @@ export default function BlogPostPage() {
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
   const [liked, setLiked] = useState(false);
+  const [commentText, setCommentText] = useState('');
+  const [submittingComment, setSubmittingComment] = useState(false);
 
   useEffect(() => {
     fetchPost();
@@ -83,6 +86,48 @@ export default function BlogPostPage() {
       });
     } catch (error) {
       console.error('Failed to like post:', error);
+    }
+  };
+
+  const handleSubmitComment = async () => {
+    if (!commentText.trim()) {
+      alert('Введите текст комментария');
+      return;
+    }
+
+    setSubmittingComment(true);
+    
+    try {
+      const response = await fetch(`https://functions.poehali.dev/75e27ae0-e41a-4c42-8f6a-0d66ca396765?action=comment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          post_id: postId,
+          content: commentText,
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        setCommentText('');
+        fetchComments();
+        if (post) {
+          setPost({
+            ...post,
+            comments_count: post.comments_count + 1,
+          });
+        }
+      } else {
+        alert('Ошибка при добавлении комментария. Войдите в систему.');
+      }
+    } catch (error) {
+      console.error('Failed to submit comment:', error);
+      alert('Ошибка при добавлении комментария');
+    } finally {
+      setSubmittingComment(false);
     }
   };
 
@@ -221,6 +266,38 @@ export default function BlogPostPage() {
               <Icon name="MessageSquare" className="h-6 w-6" />
               Комментарии ({comments.length})
             </h2>
+
+            <Card className="border-orange-100 mb-6">
+              <CardContent className="p-6">
+                <h3 className="font-semibold text-gray-900 mb-4">Оставить комментарий</h3>
+                <Textarea
+                  value={commentText}
+                  onChange={(e) => setCommentText(e.target.value)}
+                  placeholder="Поделитесь своим мнением о статье..."
+                  rows={4}
+                  className="mb-4 border-orange-200 focus:border-orange-400"
+                />
+                <div className="flex justify-end">
+                  <Button
+                    onClick={handleSubmitComment}
+                    disabled={submittingComment || !commentText.trim()}
+                    className="bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700"
+                  >
+                    {submittingComment ? (
+                      <>
+                        <Icon name="Loader2" className="h-4 w-4 mr-2 animate-spin" />
+                        Отправка...
+                      </>
+                    ) : (
+                      <>
+                        <Icon name="Send" className="h-4 w-4 mr-2" />
+                        Отправить
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
 
             {comments.length === 0 ? (
               <Card className="border-orange-100">
