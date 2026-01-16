@@ -1,0 +1,68 @@
+{
+  "tests": [
+    {
+      "name": "Get all baths",
+      "method": "GET",
+      "path": "/?resource=baths",
+      "expectedStatus": 200
+    },
+    {
+      "name": "Get baths with filters",
+      "method": "GET",
+      "path": "/?resource=baths&min_capacity=8&sort=price_asc",
+      "expectedStatus": 200
+    },
+    {
+      "name": "Get bath by slug",
+      "method": "GET",
+      "path": "/?resource=baths&slug=banya-na-presne",
+      "expectedStatus": 200,
+      "expectedBody": {
+        "slug": "banya-na-presne"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Get all masters",
+      "method": "GET",
+      "path": "/?resource=masters",
+      "expectedStatus": 200
+    },
+    {
+      "name": "Get masters with search",
+      "method": "GET",
+      "path": "/?resource=masters&search=парение",
+      "expectedStatus": 200
+    },
+    {
+      "name": "Get master by slug",
+      "method": "GET",
+      "path": "/?resource=masters&slug=ivan-parmaster",
+      "expectedStatus": 200,
+      "expectedBody": {
+        "slug": "ivan-parmaster"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Invalid resource type",
+      "method": "GET",
+      "path": "/?resource=invalid",
+      "expectedStatus": 400,
+      "expectedBody": {
+        "error": "string"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Bath not found",
+      "method": "GET",
+      "path": "/?resource=baths&slug=non-existent",
+      "expectedStatus": 404,
+      "expectedBody": {
+        "error": "string"
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}
