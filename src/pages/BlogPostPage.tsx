@@ -1,187 +1,269 @@
-import { useEffect, useState } from 'react';
-import { useParams, Navigate, Link } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { useState, useEffect } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import Icon from '@/components/ui/icon';
-import { getBlogPostBySlug, getBlogPosts, BlogPost } from '@/lib/api';
 
-const getCategoryLabel = (category: string) => {
-  switch(category) {
-    case 'rituals': return 'Ритуалы';
-    case 'health': return 'Здоровье';
-    case 'diy': return 'Своими руками';
-    case 'history': return 'История';
-    default: return category;
-  }
-};
+interface BlogPost {
+  id: number;
+  title: string;
+  content: string;
+  excerpt: string;
+  author_id: number;
+  author_name: string;
+  author_avatar?: string;
+  author_bio?: string;
+  cover_image?: string;
+  published_at: string;
+  views_count: number;
+  likes_count: number;
+  comments_count: number;
+  tags: string[];
+  reading_time: number;
+}
 
-const getCategoryColor = (category: string) => {
-  switch(category) {
-    case 'rituals': return 'bg-purple-100 text-purple-800';
-    case 'health': return 'bg-green-100 text-green-800';
-    case 'diy': return 'bg-orange-100 text-orange-800';
-    case 'history': return 'bg-blue-100 text-blue-800';
-    default: return 'bg-gray-100 text-gray-800';
-  }
-};
+interface Comment {
+  id: number;
+  user_name: string;
+  user_avatar?: string;
+  content: string;
+  created_at: string;
+  likes_count: number;
+}
 
-const BlogPostPage = () => {
-  const { slug } = useParams();
+export default function BlogPostPage() {
+  const { postId } = useParams();
+  const navigate = useNavigate();
   const [post, setPost] = useState<BlogPost | null>(null);
-  const [relatedPosts, setRelatedPosts] = useState<BlogPost[]>([]);
+  const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [liked, setLiked] = useState(false);
 
   useEffect(() => {
-    if (slug) {
-      Promise.all([
-        getBlogPostBySlug(slug),
-        getBlogPosts()
-      ])
-        .then(([postData, allPosts]) => {
-          setPost(postData);
-          if (postData) {
-            setRelatedPosts(
-              allPosts
-                .filter(p => p.category === postData.category && p.id !== postData.id)
-                .slice(0, 3)
-            );
-          }
-        })
-        .catch(console.error)
-        .finally(() => setLoading(false));
+    fetchPost();
+    fetchComments();
+  }, [postId]);
+
+  const fetchPost = async () => {
+    try {
+      const response = await fetch(`https://functions.poehali.dev/api/blog/posts/${postId}`);
+      const data = await response.json();
+      setPost(data.post);
+    } catch (error) {
+      console.error('Failed to fetch post:', error);
+    } finally {
+      setLoading(false);
     }
-  }, [slug]);
+  };
+
+  const fetchComments = async () => {
+    try {
+      const response = await fetch(`https://functions.poehali.dev/api/blog/posts/${postId}/comments`);
+      const data = await response.json();
+      setComments(data.comments || []);
+    } catch (error) {
+      console.error('Failed to fetch comments:', error);
+    }
+  };
+
+  const handleLike = async () => {
+    if (!post) return;
+    
+    try {
+      await fetch(`https://functions.poehali.dev/api/blog/posts/${postId}/like`, {
+        method: 'POST',
+      });
+      setLiked(!liked);
+      setPost({
+        ...post,
+        likes_count: liked ? post.likes_count - 1 : post.likes_count + 1,
+      });
+    } catch (error) {
+      console.error('Failed to like post:', error);
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('ru-RU', { 
+      day: 'numeric', 
+      month: 'long', 
+      year: 'numeric' 
+    });
+  };
 
   if (loading) {
     return (
-      <div className="container mx-auto px-4 py-12 flex justify-center">
-        <p className="text-muted-foreground">Загрузка...</p>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
       </div>
     );
   }
-  
+
   if (!post) {
-    return <Navigate to="/404" replace />;
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-amber-50 to-orange-100 flex items-center justify-center">
+        <Card className="max-w-md">
+          <CardContent className="p-8 text-center">
+            <Icon name="FileX" className="h-16 w-16 mx-auto mb-4 text-gray-400" />
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Пост не найден</h2>
+            <p className="text-gray-600 mb-6">Возможно, он был удалён или не существует</p>
+            <Button onClick={() => navigate('/blog')} className="bg-gradient-to-r from-orange-500 to-amber-600">
+              Вернуться к блогу
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (
-    <div className="animate-fade-in">
-      <div 
-        className="relative h-[50vh] bg-cover bg-center"
-        style={{ backgroundImage: `url(${post.image_url})` }}
-      >
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-black/20" />
-        <div className="absolute inset-0 flex items-end">
-          <div className="container mx-auto px-4 pb-12">
-            <Link to="/blog" className="inline-flex items-center gap-2 text-white/80 hover:text-white mb-4 transition-colors">
-              <Icon name="ArrowLeft" size={20} />
-              <span>К энциклопедии</span>
-            </Link>
-            <Badge className={`${getCategoryColor(post.category)} mb-4`}>
-              {getCategoryLabel(post.category)}
-            </Badge>
-            <h1 className="text-3xl md:text-5xl font-serif font-bold text-white mb-4 max-w-4xl">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-amber-50 to-orange-100">
+      <div className="container mx-auto px-4 py-8 max-w-4xl">
+        <Button
+          variant="ghost"
+          onClick={() => navigate('/blog')}
+          className="mb-6 hover:bg-orange-100"
+        >
+          <Icon name="ArrowLeft" className="h-4 w-4 mr-2" />
+          Назад к блогу
+        </Button>
+
+        <article>
+          {post.cover_image && (
+            <div className="relative h-96 rounded-2xl overflow-hidden mb-8 shadow-2xl">
+              <img
+                src={post.cover_image}
+                alt={post.title}
+                className="w-full h-full object-cover"
+              />
+            </div>
+          )}
+
+          <div className="mb-6">
+            {post.tags.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-4">
+                {post.tags.map(tag => (
+                  <Badge key={tag} className="bg-orange-100 text-orange-700 hover:bg-orange-200">
+                    {tag}
+                  </Badge>
+                ))}
+              </div>
+            )}
+
+            <h1 className="text-4xl md:text-5xl font-bold text-orange-900 mb-4 leading-tight">
               {post.title}
             </h1>
-            <div className="flex flex-wrap gap-4 items-center text-white/90">
+
+            <div className="flex items-center gap-4 text-gray-600 mb-6">
               <div className="flex items-center gap-2">
-                <Icon name="User" size={20} />
-                <span>{post.author}</span>
+                <Icon name="Calendar" className="h-4 w-4" />
+                <span>{formatDate(post.published_at)}</span>
               </div>
               <div className="flex items-center gap-2">
-                <Icon name="Calendar" size={20} />
-                <span>{new Date(post.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+                <Icon name="Clock" className="h-4 w-4" />
+                <span>{post.reading_time} мин чтения</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Icon name="Eye" className="h-4 w-4" />
+                <span>{post.views_count} просмотров</span>
               </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      <div className="container mx-auto px-4 py-12">
-        <div className="max-w-4xl mx-auto">
-          <div className="prose prose-lg max-w-none">
-            <p className="text-xl text-muted-foreground mb-8 leading-relaxed">
-              {post.excerpt}
-            </p>
-            
-            <Separator className="my-8" />
+          <Card className="mb-8">
+            <CardContent className="p-8">
+              <div 
+                className="prose prose-lg max-w-none prose-headings:text-orange-900 prose-a:text-orange-600 prose-strong:text-orange-900"
+                dangerouslySetInnerHTML={{ __html: post.content }}
+              />
+            </CardContent>
+          </Card>
 
-            <div 
-              className="space-y-6 text-foreground leading-relaxed"
-              dangerouslySetInnerHTML={{ __html: post.content }}
-            />
-          </div>
-
-          <Separator className="my-12" />
-
-          <div className="flex justify-center gap-4">
-            <Button variant="outline" size="lg" className="gap-2">
-              <Icon name="Share2" size={20} />
-              Поделиться
-            </Button>
-            <Button variant="outline" size="lg" className="gap-2">
-              <Icon name="Bookmark" size={20} />
-              Сохранить
-            </Button>
-          </div>
-
-          {relatedPosts.length > 0 && (
-            <>
-              <Separator className="my-12" />
-              
-              <div>
-                <h2 className="text-3xl font-serif font-bold mb-6">Читайте также</h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {relatedPosts.map((relatedPost) => (
-                    <Link to={`/blog/${relatedPost.slug}`} key={relatedPost.id}>
-                      <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 h-full">
-                        <div 
-                          className="h-40 bg-cover bg-center"
-                          style={{ backgroundImage: `url(${relatedPost.image_url})` }}
-                        />
-                        <CardHeader>
-                          <Badge className={`${getCategoryColor(relatedPost.category)} w-fit mb-2`}>
-                            {getCategoryLabel(relatedPost.category)}
-                          </Badge>
-                          <CardTitle className="font-serif text-lg hover:text-primary transition-colors line-clamp-2">
-                            {relatedPost.title}
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <p className="text-sm text-muted-foreground line-clamp-2">
-                            {relatedPost.excerpt}
-                          </p>
-                        </CardContent>
-                      </Card>
+          <Card className="mb-8">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <Avatar className="h-16 w-16">
+                    <AvatarImage src={post.author_avatar} alt={post.author_name} />
+                    <AvatarFallback className="bg-orange-200 text-orange-800 text-lg">
+                      {post.author_name.split(' ').map(n => n[0]).join('')}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <Link to={`/profile/${post.author_id}`} className="font-semibold text-lg text-orange-900 hover:text-orange-600">
+                      {post.author_name}
                     </Link>
-                  ))}
+                    {post.author_bio && (
+                      <p className="text-gray-600 text-sm mt-1">{post.author_bio}</p>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </>
-          )}
-
-          <div className="mt-12">
-            <Card>
-              <CardHeader>
-                <CardTitle className="font-serif text-2xl">Остались вопросы?</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground mb-4">
-                  Присоединяйтесь к нашему сообществу и обсуждайте банные традиции с единомышленниками
-                </p>
-                <Button size="lg" className="gap-2">
-                  <Icon name="MessageCircle" size={20} />
-                  Перейти в Telegram
+                <Button
+                  variant="outline"
+                  className={liked ? 'border-red-500 text-red-500' : ''}
+                  onClick={handleLike}
+                >
+                  <Icon name="Heart" className={`h-4 w-4 mr-2 ${liked ? 'fill-current' : ''}`} />
+                  {post.likes_count}
                 </Button>
-              </CardContent>
-            </Card>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Separator className="my-8" />
+
+          <div>
+            <h2 className="text-2xl font-bold text-orange-900 mb-6 flex items-center gap-2">
+              <Icon name="MessageSquare" className="h-6 w-6" />
+              Комментарии ({comments.length})
+            </h2>
+
+            {comments.length === 0 ? (
+              <Card className="border-orange-100">
+                <CardContent className="py-12 text-center">
+                  <Icon name="MessageSquare" className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                  <p className="text-gray-600">Пока нет комментариев</p>
+                  <p className="text-gray-500 text-sm mt-2">Будьте первым, кто оставит комментарий!</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-4">
+                {comments.map(comment => (
+                  <Card key={comment.id} className="border-orange-100">
+                    <CardContent className="p-6">
+                      <div className="flex gap-4">
+                        <Avatar className="h-10 w-10">
+                          <AvatarImage src={comment.user_avatar} alt={comment.user_name} />
+                          <AvatarFallback className="bg-orange-200 text-orange-800 text-sm">
+                            {comment.user_name.split(' ').map(n => n[0]).join('')}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="font-semibold text-gray-900">{comment.user_name}</span>
+                            <span className="text-sm text-gray-500">
+                              {formatDate(comment.created_at)}
+                            </span>
+                          </div>
+                          <p className="text-gray-700 mb-3">{comment.content}</p>
+                          <Button variant="ghost" size="sm" className="text-gray-600 hover:text-orange-600">
+                            <Icon name="ThumbsUp" className="h-4 w-4 mr-1" />
+                            {comment.likes_count}
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </div>
-        </div>
+        </article>
       </div>
     </div>
   );
-};
-
-export default BlogPostPage;
+}

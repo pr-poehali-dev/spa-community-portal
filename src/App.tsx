@@ -15,6 +15,7 @@ import MastersListPage from "./pages/MastersListPage";
 import MasterDetailPage from "./pages/MasterDetailPage";
 import BlogPage from "./pages/BlogPage";
 import BlogPostPage from "./pages/BlogPostPage";
+import BlogEditorPage from "./pages/BlogEditorPage";
 import AboutPage from "./pages/AboutPage";
 import LoginPage from "./pages/LoginPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
@@ -61,7 +62,8 @@ const App = () => (
             <Route path="/masters" element={<Layout><MastersListPage /></Layout>} />
             <Route path="/masters/:slug" element={<Layout><MasterDetailPage /></Layout>} />
             <Route path="/blog" element={<Layout><BlogPage /></Layout>} />
-            <Route path="/blog/:slug" element={<Layout><BlogPostPage /></Layout>} />
+            <Route path="/blog/editor" element={<Layout><BlogEditorPage /></Layout>} />
+            <Route path="/blog/:postId" element={<Layout><BlogPostPage /></Layout>} />
             <Route path="/about" element={<Layout><AboutPage /></Layout>} />
             <Route path="/login" element={<Layout><LoginPage /></Layout>} />
             <Route path="/forgot-password" element={<Layout><ForgotPasswordPage /></Layout>} />
