@@ -1,0 +1,55 @@
+{
+  "tests": [
+    {
+      "name": "Get all events",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "Get events with type filter",
+      "method": "GET",
+      "path": "/?type=women",
+      "expectedStatus": 200
+    },
+    {
+      "name": "Get event detail by slug",
+      "method": "GET",
+      "path": "/?slug=zhenskoe-wellness-parenie",
+      "expectedStatus": 200
+    },
+    {
+      "name": "Get non-existent event",
+      "method": "GET",
+      "path": "/?slug=non-existent",
+      "expectedStatus": 404
+    },
+    {
+      "name": "Register without auth",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "event_id": 2
+      },
+      "expectedStatus": 401
+    },
+    {
+      "name": "Cancel registration without auth",
+      "method": "DELETE",
+      "path": "/?event_id=2",
+      "expectedStatus": 401
+    },
+    {
+      "name": "Search events by text",
+      "method": "GET",
+      "path": "/?search=wellness",
+      "expectedStatus": 200
+    },
+    {
+      "name": "Filter by available spots",
+      "method": "GET",
+      "path": "/?available_only=true",
+      "expectedStatus": 200
+    }
+  ]
+}

@@ -1,6 +1,6 @@
-# 🏛️ Catalog & Reviews API
+# 🏛️ Catalog, Events & Reviews API
 
-Документация для работы с каталогом бань, мастеров и отзывами.
+Документация для работы с каталогом бань, мастеров, мероприятий и отзывами.
 
 ---
 
@@ -172,6 +172,196 @@
 
 ---
 
+## 🎉 Events API
+
+**Base URL:** `https://functions.poehali.dev/3b8cf90b-4e96-4334-84ad-01b48feb63d8`
+
+### GET /
+
+Получение списка мероприятий с фильтрацией и сортировкой.
+
+**Query Parameters:**
+- `type` (optional): Фильтр по типу события - `men`, `women`, `mixed`
+- `search` (optional): Поиск по названию и описанию
+- `date_from` (optional): Фильтр - события начиная с даты (формат: YYYY-MM-DD)
+- `date_to` (optional): Фильтр - события до даты (формат: YYYY-MM-DD)
+- `available_only` (optional): Только события со свободными местами (`true`/`false`)
+- `sort` (optional):
+  - `date` (по умолчанию) - по дате и времени
+  - `price_asc` - по цене возрастание
+  - `price_desc` - по цене убывание
+  - `spots` - по количеству свободных мест
+- `limit` (optional): Количество результатов (по умолчанию 20, макс 100)
+- `offset` (optional): Смещение для пагинации
+
+**Response (200):**
+```json
+{
+  "items": [
+    {
+      "id": 1,
+      "slug": "tradicionnyy-muzhskoy-par",
+      "title": "Традиционный мужской парной день",
+      "description": "Погружение в атмосферу традиционной русской бани...",
+      "date": "2026-01-18",
+      "time": "14:00:00",
+      "location": "Баня на Пресне",
+      "type": "men",
+      "price": 1500,
+      "available_spots": 8,
+      "total_spots": 10,
+      "image_url": "https://cdn.poehali.dev/..."
+    }
+  ],
+  "total": 4,
+  "limit": 20,
+  "offset": 0
+}
+```
+
+---
+
+### GET /?slug={slug}
+
+Получение детальной информации о событии по slug.
+
+**Response (200):**
+```json
+{
+  "id": 1,
+  "slug": "tradicionnyy-muzhskoy-par",
+  "title": "Традиционный мужской парной день",
+  "description": "Погружение в атмосферу традиционной русской бани...",
+  "date": "2026-01-18",
+  "time": "14:00:00",
+  "location": "Баня на Пресне",
+  "type": "men",
+  "price": 1500,
+  "available_spots": 8,
+  "total_spots": 10,
+  "image_url": "https://cdn.poehali.dev/...",
+  "program": [
+    "Знакомство и чайная церемония",
+    "Первый мягкий заход",
+    "Парение с дубовым веником",
+    "Отдых и общение"
+  ],
+  "rules": [
+    "Записаться не позднее чем за 24 часа",
+    "Принести свой халат и тапочки",
+    "Сообщить о противопоказаниях"
+  ],
+  "created_at": "2026-01-12T08:59:41.823814"
+}
+```
+
+**Errors:**
+- `404` - Событие не найдено
+
+---
+
+### GET /?id={id}
+
+Получение детальной информации о событии по ID.
+
+**Response:** Аналогично slug запросу
+
+---
+
+### POST /
+
+Регистрация на событие (требуется авторизация).
+
+**Headers:**
+```
+Authorization: Bearer {access_token}
+```
+
+**Request:**
+```json
+{
+  "event_id": 1
+}
+```
+
+**Response (201):**
+```json
+{
+  "id": 15,
+  "registered_at": "2026-01-16T10:00:00",
+  "message": "Регистрация успешна"
+}
+```
+
+**Errors:**
+- `400` - Нет свободных мест или некорректные данные
+- `401` - Требуется авторизация
+- `404` - Событие не найдено
+- `409` - Вы уже зарегистрированы на это событие
+
+---
+
+### DELETE /?event_id={id}
+
+Отмена регистрации на событие (требуется авторизация).
+
+**Headers:**
+```
+Authorization: Bearer {access_token}
+```
+
+**Response (200):**
+```json
+{
+  "message": "Регистрация отменена"
+}
+```
+
+**Errors:**
+- `400` - Регистрация уже отменена
+- `401` - Требуется авторизация
+- `404` - Регистрация не найдена
+
+---
+
+### GET /?my_registrations=true
+
+Получение списка регистраций текущего пользователя (требуется авторизация).
+
+**Headers:**
+```
+Authorization: Bearer {access_token}
+```
+
+**Response (200):**
+```json
+{
+  "registrations": [
+    {
+      "id": 15,
+      "event_id": 1,
+      "status": "registered",
+      "registered_at": "2026-01-16T10:00:00",
+      "canceled_at": null,
+      "event": {
+        "slug": "tradicionnyy-muzhskoy-par",
+        "title": "Традиционный мужской парной день",
+        "date": "2026-01-18",
+        "time": "14:00:00",
+        "location": "Баня на Пресне",
+        "price": 1500,
+        "image_url": "https://cdn.poehali.dev/..."
+      }
+    }
+  ]
+}
+```
+
+**Errors:**
+- `401` - Требуется авторизация
+
+---
+
 ## ⭐ Reviews API
 
 **Base URL:** `https://functions.poehali.dev/6d9be798-b393-4f38-941a-9a2025d8ca11`
@@ -310,6 +500,75 @@ const createReview = async (bathId, rating, comment) => {
       rating: rating,
       comment: comment
     })
+  });
+  
+  return response.json();
+};
+
+// Получение списка мероприятий
+const getEvents = async () => {
+  const params = new URLSearchParams({
+    type: 'men',
+    available_only: true,
+    sort: 'date'
+  });
+  
+  const response = await fetch(`https://functions.poehali.dev/3b8cf90b-4e96-4334-84ad-01b48feb63d8/?${params}`);
+  return response.json();
+};
+
+// Получение детальной информации о событии
+const getEvent = async (slug) => {
+  const params = new URLSearchParams({
+    slug: slug
+  });
+  
+  const response = await fetch(`https://functions.poehali.dev/3b8cf90b-4e96-4334-84ad-01b48feb63d8/?${params}`);
+  return response.json();
+};
+
+// Регистрация на событие
+const registerForEvent = async (eventId) => {
+  const token = localStorage.getItem('access_token');
+  
+  const response = await fetch('https://functions.poehali.dev/3b8cf90b-4e96-4334-84ad-01b48feb63d8/', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      event_id: eventId
+    })
+  });
+  
+  return response.json();
+};
+
+// Отмена регистрации на событие
+const cancelEventRegistration = async (eventId) => {
+  const token = localStorage.getItem('access_token');
+  const params = new URLSearchParams({ event_id: eventId });
+  
+  const response = await fetch(`https://functions.poehali.dev/3b8cf90b-4e96-4334-84ad-01b48feb63d8/?${params}`, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+  
+  return response.json();
+};
+
+// Получение моих регистраций
+const getMyRegistrations = async () => {
+  const token = localStorage.getItem('access_token');
+  const params = new URLSearchParams({ my_registrations: true });
+  
+  const response = await fetch(`https://functions.poehali.dev/3b8cf90b-4e96-4334-84ad-01b48feb63d8/?${params}`, {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
   });
   
   return response.json();
