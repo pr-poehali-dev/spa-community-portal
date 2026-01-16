@@ -36,7 +36,7 @@ export default function BlogPage() {
 
   const fetchPosts = async () => {
     try {
-      const response = await fetch('https://functions.poehali.dev/api/blog/posts');
+      const response = await fetch('https://functions.poehali.dev/75e27ae0-e41a-4c42-8f6a-0d66ca396765?action=list&draft=false');
       const data = await response.json();
       setPosts(data.posts || []);
     } catch (error) {

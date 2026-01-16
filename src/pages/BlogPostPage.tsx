@@ -49,7 +49,7 @@ export default function BlogPostPage() {
 
   const fetchPost = async () => {
     try {
-      const response = await fetch(`https://functions.poehali.dev/api/blog/posts/${postId}`);
+      const response = await fetch(`https://functions.poehali.dev/75e27ae0-e41a-4c42-8f6a-0d66ca396765?action=get&post_id=${postId}`);
       const data = await response.json();
       setPost(data.post);
     } catch (error) {
@@ -61,7 +61,7 @@ export default function BlogPostPage() {
 
   const fetchComments = async () => {
     try {
-      const response = await fetch(`https://functions.poehali.dev/api/blog/posts/${postId}/comments`);
+      const response = await fetch(`https://functions.poehali.dev/75e27ae0-e41a-4c42-8f6a-0d66ca396765?action=comments&post_id=${postId}`);
       const data = await response.json();
       setComments(data.comments || []);
     } catch (error) {
@@ -73,7 +73,7 @@ export default function BlogPostPage() {
     if (!post) return;
     
     try {
-      await fetch(`https://functions.poehali.dev/api/blog/posts/${postId}/like`, {
+      await fetch(`https://functions.poehali.dev/75e27ae0-e41a-4c42-8f6a-0d66ca396765?action=like&post_id=${postId}`, {
         method: 'POST',
       });
       setLiked(!liked);
