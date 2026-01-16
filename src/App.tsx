@@ -29,6 +29,7 @@ import AdminTransactionsPage from "./pages/admin/AdminTransactionsPage";
 import AdminBookingsPage from "./pages/admin/AdminBookingsPage";
 import AdminSettingsPage from "./pages/admin/AdminSettingsPage";
 import AdminRoleApplicationsPage from "./pages/admin/AdminRoleApplicationsPage";
+import AdminBlogPage from "./pages/admin/AdminBlogPage";
 import ApplyRolePage from "./pages/ApplyRolePage";
 import AccountPage from "./pages/AccountPage";
 import NotFound from "./pages/NotFound";
@@ -48,6 +49,7 @@ const App = () => (
               <Route path="saunas" element={<AdminSaunasPage />} />
               <Route path="masters" element={<AdminMastersPage />} />
               <Route path="users" element={<AdminUsersPage />} />
+              <Route path="blog" element={<AdminBlogPage />} />
               <Route path="role-applications" element={<AdminRoleApplicationsPage />} />
               <Route path="transactions" element={<AdminTransactionsPage />} />
               <Route path="bookings" element={<AdminBookingsPage />} />
