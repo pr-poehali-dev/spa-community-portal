@@ -33,8 +33,10 @@ const AdminUsersPage = () => {
   const loadUsers = async () => {
     try {
       const data = await adminApi.users.getAll();
-      setUsers(data);
+      setUsers(Array.isArray(data) ? data : []);
     } catch (error) {
+      console.error('Failed to load users:', error);
+      setUsers([]);
       toast({
         title: 'Ошибка',
         description: 'Не удалось загрузить пользователей',
@@ -94,10 +96,10 @@ const AdminUsersPage = () => {
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
-  const filteredUsers = users.filter((user) =>
-    user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredUsers = Array.isArray(users) ? users.filter((user) =>
+    user.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    user.email?.toLowerCase().includes(searchQuery.toLowerCase())
+  ) : [];
 
   if (loading) {
     return <div className="flex items-center justify-center h-64">Загрузка...</div>;
