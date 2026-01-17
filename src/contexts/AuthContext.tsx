@@ -39,6 +39,40 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
     try {
+      // Пробуем декодировать JWT токен локально
+      const parts = storedToken.split('.');
+      if (parts.length === 3) {
+        try {
+          const payload = JSON.parse(atob(parts[1]));
+          
+          // Проверяем, не истек ли токен
+          if (payload.exp && payload.exp * 1000 > Date.now()) {
+            // Если есть user_id в токене, значит это Telegram JWT
+            if (payload.user_id) {
+              // Для Telegram авторизации используем данные из localStorage
+              const telegramUser = localStorage.getItem('telegram_user');
+              if (telegramUser) {
+                setUser(JSON.parse(telegramUser));
+                setToken(storedToken);
+                setLoading(false);
+                return;
+              }
+            }
+          } else {
+            // Токен истек
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('telegram_user');
+            setToken(null);
+            setUser(null);
+            setLoading(false);
+            return;
+          }
+        } catch (e) {
+          // Не JWT токен, продолжаем проверку через API
+        }
+      }
+
+      // Старый способ проверки через API для email-авторизации
       const response = await fetch(AUTH_API_URL, {
         method: 'GET',
         headers: {

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTelegramAuth } from '@/components/extensions/telegram-bot/useTelegramAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Icon from '@/components/ui/icon';
 
@@ -12,6 +13,7 @@ const TelegramCallbackPage = () => {
   const [searchParams] = useSearchParams();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [errorMessage, setErrorMessage] = useState('');
+  const { checkAuth } = useAuth();
 
   const telegramAuth = useTelegramAuth({
     apiUrls: {
@@ -41,6 +43,13 @@ const TelegramCallbackPage = () => {
         if (cancelled) return;
         
         if (success) {
+          // Сохраняем access_token и user в localStorage для AuthContext
+          if (telegramAuth.accessToken && telegramAuth.user) {
+            localStorage.setItem('auth_token', telegramAuth.accessToken);
+            localStorage.setItem('telegram_user', JSON.stringify(telegramAuth.user));
+            await checkAuth(); // Обновляем состояние AuthContext
+          }
+          
           setStatus('success');
           setTimeout(() => navigate('/account'), 1500);
         } else {

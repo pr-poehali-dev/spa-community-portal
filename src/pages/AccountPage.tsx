@@ -1,23 +1,39 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import RoleSwitcher from '@/components/RoleSwitcher';
 import { type RoleType } from '@/types/roles';
+import { useAuth } from '@/contexts/AuthContext';
 import ParticipantDashboard from './dashboard/ParticipantDashboard';
 import MasterDashboard from './dashboard/MasterDashboard';
 import OrganizerDashboard from './dashboard/OrganizerDashboard';
 
 export default function AccountPage() {
   const [currentRole, setCurrentRole] = useState<RoleType | null>(null);
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
+
+  // Если не авторизован, перенаправляем на логин
+  if (!loading && !user) {
+    navigate('/login');
+    return null;
+  }
+
+  // Показываем загрузку
+  if (loading || !user) {
+    return (
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
+        <div className="text-center py-12">Загрузка...</div>
+      </div>
+    );
+  }
   
-  const userId = 1;
-  const user = {
-    id: 1,
-    name: 'Иван Петров',
-    email: 'ivan@example.com',
-    phone: '+7 (999) 123-45-67',
-    avatar_url: '',
-  };
+  const userId = user.id;
+  const userName = user.name || 'Пользователь';
+  const userEmail = user.email || '';
+  const userPhone = user.phone || '';
+  const userAvatar = user.avatar_url || '';
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
@@ -27,13 +43,13 @@ export default function AccountPage() {
             <CardContent className="p-6">
               <div className="flex flex-col items-center text-center mb-6">
                 <Avatar className="h-24 w-24 mb-4">
-                  <AvatarImage src={user.avatar_url} alt={user.name} />
+                  <AvatarImage src={userAvatar} alt={userName} />
                   <AvatarFallback className="bg-gradient-to-br from-orange-400 to-amber-500 text-white text-2xl">
-                    {user.name.split(' ').map(n => n[0]).join('')}
+                    {userName.split(' ').map(n => n[0]).join('')}
                   </AvatarFallback>
                 </Avatar>
-                <h2 className="text-xl font-bold text-orange-900">{user.name}</h2>
-                <p className="text-sm text-gray-600">{user.email}</p>
+                <h2 className="text-xl font-bold text-orange-900">{userName}</h2>
+                <p className="text-sm text-gray-600">{userEmail}</p>
               </div>
 
               <RoleSwitcher 
