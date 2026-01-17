@@ -45,9 +45,18 @@ const TelegramCallbackPage = () => {
         if (success) {
           // Сохраняем access_token и user в localStorage для AuthContext
           if (telegramAuth.accessToken && telegramAuth.user) {
+            console.log('[TelegramCallback] Сохраняем токен и пользователя:', {
+              token: telegramAuth.accessToken.substring(0, 20) + '...',
+              user: telegramAuth.user
+            });
             localStorage.setItem('auth_token', telegramAuth.accessToken);
             localStorage.setItem('telegram_user', JSON.stringify(telegramAuth.user));
             await checkAuth(); // Обновляем состояние AuthContext
+          } else {
+            console.error('[TelegramCallback] Нет токена или пользователя:', {
+              hasToken: !!telegramAuth.accessToken,
+              hasUser: !!telegramAuth.user
+            });
           }
           
           setStatus('success');

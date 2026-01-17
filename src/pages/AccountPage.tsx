@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -14,11 +14,12 @@ export default function AccountPage() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
 
-  // Если не авторизован, перенаправляем на логин
-  if (!loading && !user) {
-    navigate('/login');
-    return null;
-  }
+  // Перенаправление на логин в useEffect
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate('/login');
+    }
+  }, [loading, user, navigate]);
 
   // Показываем загрузку
   if (loading || !user) {
