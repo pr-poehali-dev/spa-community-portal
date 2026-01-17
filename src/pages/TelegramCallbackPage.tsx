@@ -32,9 +32,13 @@ const TelegramCallbackPage = () => {
       return;
     }
 
+    let cancelled = false;
+
     const authenticate = async () => {
       try {
         const success = await telegramAuth.handleCallback(token);
+        
+        if (cancelled) return;
         
         if (success) {
           setStatus('success');
@@ -45,6 +49,7 @@ const TelegramCallbackPage = () => {
           setTimeout(() => navigate('/login'), 3000);
         }
       } catch (error) {
+        if (cancelled) return;
         setStatus('error');
         setErrorMessage('Произошла ошибка при авторизации');
         setTimeout(() => navigate('/login'), 3000);
@@ -52,7 +57,11 @@ const TelegramCallbackPage = () => {
     };
 
     authenticate();
-  }, [searchParams, telegramAuth, navigate]);
+    
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-amber-50 flex items-center justify-center p-4">
