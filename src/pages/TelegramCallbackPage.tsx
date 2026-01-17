@@ -42,7 +42,7 @@ const TelegramCallbackPage = () => {
         
         if (success) {
           setStatus('success');
-          setTimeout(() => navigate('/account/dashboard'), 1500);
+          setTimeout(() => navigate('/account'), 1500);
         } else {
           setStatus('error');
           setErrorMessage(telegramAuth.error || 'Ошибка авторизации');

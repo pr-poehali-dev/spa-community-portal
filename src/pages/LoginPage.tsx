@@ -54,7 +54,7 @@ const LoginPage = () => {
     setRegisterCaptcha(generateCaptcha());
   }, []);
 
-  const from = (location.state as any)?.from?.pathname || '/account/dashboard';
+  const from = (location.state as any)?.from?.pathname || '/account';
 
   const handleTelegramLogin = () => {
     telegramAuth.login();
