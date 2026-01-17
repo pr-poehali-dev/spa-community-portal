@@ -38,35 +38,45 @@ const TelegramCallbackPage = () => {
 
     const authenticate = async () => {
       try {
-        const success = await telegramAuth.handleCallback(token);
-        
+        // Вызываем API напрямую, чтобы получить токен и user из ответа
+        const response = await fetch(`${TELEGRAM_AUTH_URL}?action=callback`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token }),
+        });
+
         if (cancelled) return;
-        
-        if (success) {
-          // Сохраняем access_token и user в localStorage для AuthContext
-          if (telegramAuth.accessToken && telegramAuth.user) {
-            console.log('[TelegramCallback] Сохраняем токен и пользователя:', {
-              token: telegramAuth.accessToken.substring(0, 20) + '...',
-              user: telegramAuth.user
-            });
-            localStorage.setItem('auth_token', telegramAuth.accessToken);
-            localStorage.setItem('telegram_user', JSON.stringify(telegramAuth.user));
-            await checkAuth(); // Обновляем состояние AuthContext
-          } else {
-            console.error('[TelegramCallback] Нет токена или пользователя:', {
-              hasToken: !!telegramAuth.accessToken,
-              hasUser: !!telegramAuth.user
-            });
-          }
+
+        const data = await response.json();
+
+        if (response.ok && data.access_token && data.user) {
+          console.log('[TelegramCallback] Успешная авторизация:', {
+            token: data.access_token.substring(0, 20) + '...',
+            user: data.user
+          });
+
+          // Сохраняем в localStorage для AuthContext
+          localStorage.setItem('auth_token', data.access_token);
+          localStorage.setItem('telegram_user', JSON.stringify(data.user));
           
+          // Также сохраняем refresh_token для useTelegramAuth
+          if (data.refresh_token) {
+            localStorage.setItem('telegram_auth_refresh_token', data.refresh_token);
+          }
+
+          // Обновляем AuthContext
+          await checkAuth();
+
           setStatus('success');
           setTimeout(() => navigate('/account'), 1500);
         } else {
+          console.error('[TelegramCallback] Ошибка авторизации:', data);
           setStatus('error');
-          setErrorMessage(telegramAuth.error || 'Ошибка авторизации');
+          setErrorMessage(data.error || 'Ошибка авторизации');
           setTimeout(() => navigate('/login'), 3000);
         }
       } catch (error) {
+        console.error('[TelegramCallback] Исключение:', error);
         if (cancelled) return;
         setStatus('error');
         setErrorMessage('Произошла ошибка при авторизации');
