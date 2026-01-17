@@ -18,6 +18,7 @@ import BlogPostPage from "./pages/BlogPostPage";
 import BlogEditorPage from "./pages/BlogEditorPage";
 import AboutPage from "./pages/AboutPage";
 import LoginPage from "./pages/LoginPage";
+import TelegramCallbackPage from "./pages/TelegramCallbackPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -68,6 +69,7 @@ const App = () => (
             <Route path="/blog/:postId" element={<Layout><BlogPostPage /></Layout>} />
             <Route path="/about" element={<Layout><AboutPage /></Layout>} />
             <Route path="/login" element={<Layout><LoginPage /></Layout>} />
+            <Route path="/auth/telegram/callback" element={<TelegramCallbackPage />} />
             <Route path="/forgot-password" element={<Layout><ForgotPasswordPage /></Layout>} />
             <Route path="/reset-password" element={<Layout><ResetPasswordPage /></Layout>} />
             <Route path="/account" element={<Layout><AccountPage /></Layout>} />
