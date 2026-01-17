@@ -195,7 +195,7 @@ def save_refresh_token(cursor, user_id: int, token_hash: str, expires_at: dateti
     """Save hashed refresh token to DB."""
     schema = get_schema()
     cursor.execute(f"""
-        INSERT INTO {schema}refresh_tokens (user_id, token_hash, expires_at)
+        INSERT INTO {schema}telegram_refresh_tokens (user_id, token_hash, expires_at)
         VALUES (%s, %s, %s)
     """, (user_id, token_hash, expires_at))
 
@@ -205,7 +205,7 @@ def find_refresh_token(cursor, token_hash: str) -> Optional[dict]:
     schema = get_schema()
     cursor.execute(f"""
         SELECT user_id, expires_at
-        FROM {schema}refresh_tokens
+        FROM {schema}telegram_refresh_tokens
         WHERE token_hash = %s AND expires_at > NOW()
     """, (token_hash,))
 
@@ -218,7 +218,7 @@ def find_refresh_token(cursor, token_hash: str) -> Optional[dict]:
 def delete_refresh_token(cursor, token_hash: str) -> None:
     """Delete refresh token."""
     schema = get_schema()
-    cursor.execute(f"DELETE FROM {schema}refresh_tokens WHERE token_hash = %s", (token_hash,))
+    cursor.execute(f"DELETE FROM {schema}telegram_refresh_tokens WHERE token_hash = %s", (token_hash,))
 
 
 def get_user_by_id(cursor, user_id: int) -> Optional[dict]:
@@ -244,7 +244,7 @@ def get_user_by_id(cursor, user_id: int) -> Optional[dict]:
 def cleanup_expired_refresh_tokens(cursor) -> None:
     """Remove expired refresh tokens."""
     schema = get_schema()
-    cursor.execute(f"DELETE FROM {schema}refresh_tokens WHERE expires_at < NOW()")
+    cursor.execute(f"DELETE FROM {schema}telegram_refresh_tokens WHERE expires_at < NOW()")
 
 
 # =============================================================================
