@@ -18,7 +18,7 @@ const generateCaptcha = () => {
 };
 
 const TELEGRAM_AUTH_URL = 'https://functions.poehali.dev/dc3fb91d-b358-49d4-8739-e624e705ab71';
-const TELEGRAM_BOT_USERNAME = import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'bathousebot';
+const TELEGRAM_BOT_USERNAME = import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'SparcomAuth_bot';
 
 const LoginPage = () => {
   const navigate = useNavigate();
