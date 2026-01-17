@@ -8,6 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import Icon from '@/components/ui/icon';
+import { TelegramLoginButton } from '@/components/extensions/telegram-bot/TelegramLoginButton';
+import { useTelegramAuth } from '@/components/extensions/telegram-bot/useTelegramAuth';
 
 const generateCaptcha = () => {
   const num1 = Math.floor(Math.random() * 10) + 1;
@@ -20,6 +22,7 @@ const LoginPage = () => {
   const location = useLocation();
   const { login, register } = useAuth();
   const { toast } = useToast();
+  const telegramAuth = useTelegramAuth();
 
   const [loginData, setLoginData] = useState({ email: '', password: '', captcha: '' });
   const [registerData, setRegisterData] = useState({
@@ -41,6 +44,14 @@ const LoginPage = () => {
   }, []);
 
   const from = (location.state as any)?.from?.pathname || '/account/dashboard';
+
+  const handleTelegramLogin = () => {
+    telegramAuth.login();
+    toast({
+      title: 'Переход в Telegram',
+      description: 'Откройте бота в Telegram для авторизации'
+    });
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -201,6 +212,22 @@ const LoginPage = () => {
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? 'Вход...' : 'Войти'}
                 </Button>
+                
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">Или</span>
+                  </div>
+                </div>
+
+                <TelegramLoginButton 
+                  onClick={handleTelegramLogin}
+                  isLoading={telegramAuth.isLoading}
+                  className="w-full"
+                />
+
                 <div className="text-center">
                   <a href="/forgot-password" className="text-sm text-orange-600 hover:text-orange-700 hover:underline">
                     Забыли пароль?
