@@ -17,12 +17,23 @@ const generateCaptcha = () => {
   return { num1, num2, answer: num1 + num2 };
 };
 
+const TELEGRAM_AUTH_URL = 'https://functions.poehali.dev/dc3fb91d-b358-49d4-8739-e624e705ab71';
+const TELEGRAM_BOT_USERNAME = import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'bathousebot';
+
 const LoginPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { login, register } = useAuth();
   const { toast } = useToast();
-  const telegramAuth = useTelegramAuth();
+  
+  const telegramAuth = useTelegramAuth({
+    apiUrls: {
+      callback: `${TELEGRAM_AUTH_URL}?action=callback`,
+      refresh: `${TELEGRAM_AUTH_URL}?action=refresh`,
+      logout: `${TELEGRAM_AUTH_URL}?action=logout`,
+    },
+    botUsername: TELEGRAM_BOT_USERNAME,
+  });
 
   const [loginData, setLoginData] = useState({ email: '', password: '', captcha: '' });
   const [registerData, setRegisterData] = useState({
