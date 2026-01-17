@@ -165,16 +165,15 @@ def create_or_update_user(
             UPDATE {schema}users
             SET name = COALESCE(%s, name),
                 avatar_url = COALESCE(%s, avatar_url),
-                last_login_at = NOW(),
                 updated_at = NOW()
             WHERE telegram_id = %s
             RETURNING id, email, name, avatar_url, telegram_id
         """, (display_name, photo_url, telegram_id))
     else:
-        # Create new user
+        # Create new user - email and password_hash are required but empty for Telegram users
         cursor.execute(f"""
-            INSERT INTO {schema}users (telegram_id, name, avatar_url, email_verified, password_hash, created_at, updated_at, last_login_at)
-            VALUES (%s, %s, %s, TRUE, '', NOW(), NOW(), NOW())
+            INSERT INTO {schema}users (telegram_id, name, avatar_url, email, password_hash, created_at, updated_at)
+            VALUES (%s, %s, %s, '', '', NOW(), NOW())
             RETURNING id, email, name, avatar_url, telegram_id
         """, (telegram_id, display_name, photo_url))
 
