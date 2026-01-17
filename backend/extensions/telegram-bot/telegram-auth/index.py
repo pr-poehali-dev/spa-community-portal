@@ -72,17 +72,19 @@ def get_auth_token(cursor, token: str) -> Optional[dict]:
     
     query = f"""
         SELECT telegram_id, telegram_username, telegram_first_name,
-               telegram_last_name, telegram_photo_url, expires_at, used
+               telegram_last_name, telegram_photo_url, expires_at, used_at
         FROM {schema}telegram_auth_tokens
         WHERE token_hash = %s
     """
-    print(f"[DB] Schema: '{schema}', Query: {query[:100]}")
+    print(f"[DB] Query: {query[:150]}")
     cursor.execute(query, (token_hash,))
 
     row = cursor.fetchone()
     if not row:
+        print("[DB] Token not found in database")
         return None
 
+    print(f"[DB] Found token for telegram_id: {row[0]}")
     return {
         "telegram_id": row[0],
         "telegram_username": row[1],
@@ -90,7 +92,7 @@ def get_auth_token(cursor, token: str) -> Optional[dict]:
         "telegram_last_name": row[3],
         "telegram_photo_url": row[4],
         "expires_at": row[5],
-        "used": row[6],
+        "used": row[6] is not None,
     }
 
 
@@ -101,8 +103,8 @@ def mark_token_used(cursor, token: str) -> bool:
 
     cursor.execute(f"""
         UPDATE {schema}telegram_auth_tokens
-        SET used = TRUE
-        WHERE token_hash = %s AND used = FALSE
+        SET used_at = NOW()
+        WHERE token_hash = %s AND used_at IS NULL
         RETURNING id
     """, (token_hash,))
 
@@ -114,7 +116,7 @@ def cleanup_expired_tokens(cursor) -> None:
     schema = get_schema()
     cursor.execute(f"""
         DELETE FROM {schema}telegram_auth_tokens
-        WHERE expires_at < NOW() OR (used = TRUE AND created_at < NOW() - INTERVAL '1 hour')
+        WHERE expires_at < NOW() OR (used_at IS NOT NULL AND created_at < NOW() - INTERVAL '1 hour')
     """)
 
 
