@@ -283,12 +283,16 @@ def handle_callback(cursor, body: dict) -> dict:
     Like standard OAuth callback.
     """
     token = body.get("token")
+    print(f"[CALLBACK] Received token: {token[:10]}..." if token else "[CALLBACK] No token received")
+    
     if not token:
         return cors_response(400, {"error": "Missing token"})
 
     token_data = get_auth_token(cursor, token)
+    print(f"[CALLBACK] Token data from DB: {token_data}")
 
     if not token_data:
+        print("[CALLBACK] Token not found in database")
         return cors_response(404, {"error": "Token not found"})
 
     # Check if expired (handle both naive and aware datetime from DB)
@@ -400,14 +404,18 @@ def handler(event, context):
     # Parse query params
     params = event.get("queryStringParameters") or {}
     action = params.get("action", "")
+    print(f"[HANDLER] Method: {method}, Action: {action}")
 
     # Parse body for POST requests
     body = {}
     if method == "POST":
         raw_body = event.get("body", "{}")
+        print(f"[HANDLER] Raw body: {raw_body[:200] if raw_body else 'empty'}")
         try:
             body = json.loads(raw_body) if raw_body else {}
+            print(f"[HANDLER] Parsed body keys: {list(body.keys())}")
         except json.JSONDecodeError:
+            print("[HANDLER] JSON decode error")
             return cors_response(400, {"error": "Invalid JSON"})
 
     conn = None
@@ -437,7 +445,9 @@ def handler(event, context):
     except Exception as e:
         if conn:
             conn.rollback()
-        print(f"Error: {e}")
+        print(f"[ERROR] Exception: {type(e).__name__}: {str(e)}")
+        import traceback
+        print(f"[ERROR] Traceback: {traceback.format_exc()}")
         return cors_response(500, {"error": "Internal server error"})
     finally:
         if conn:
