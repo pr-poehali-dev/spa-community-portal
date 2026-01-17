@@ -69,13 +69,15 @@ def get_auth_token(cursor, token: str) -> Optional[dict]:
     """Get auth token data by token."""
     token_hash = hash_token(token)
     schema = get_schema()
-
-    cursor.execute(f"""
+    
+    query = f"""
         SELECT telegram_id, telegram_username, telegram_first_name,
                telegram_last_name, telegram_photo_url, expires_at, used
         FROM {schema}telegram_auth_tokens
         WHERE token_hash = %s
-    """, (token_hash,))
+    """
+    print(f"[DB] Schema: '{schema}', Query: {query[:100]}")
+    cursor.execute(query, (token_hash,))
 
     row = cursor.fetchone()
     if not row:
