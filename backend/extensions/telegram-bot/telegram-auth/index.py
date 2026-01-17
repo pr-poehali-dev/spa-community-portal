@@ -423,9 +423,12 @@ def handler(event, context):
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        # Cleanup expired tokens periodically
-        cleanup_expired_tokens(cursor)
-        cleanup_expired_refresh_tokens(cursor)
+        # Cleanup expired tokens periodically (ignore errors)
+        try:
+            cleanup_expired_tokens(cursor)
+            cleanup_expired_refresh_tokens(cursor)
+        except Exception as cleanup_error:
+            print(f"[WARNING] Cleanup failed: {cleanup_error}")
 
         # Route to action handler
         if action == "callback" and method == "POST":
