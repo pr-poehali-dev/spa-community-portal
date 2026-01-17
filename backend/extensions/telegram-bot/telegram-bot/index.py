@@ -148,29 +148,40 @@ def handle_start(chat_id: int) -> None:
 
 def process_webhook(body: dict) -> dict:
     """Обработка webhook от Telegram."""
+    print(f"[WEBHOOK] Received: {json.dumps(body)[:500]}")
+    
     message = body.get("message")
 
     if not message:
+        print("[WEBHOOK] No message in body")
         return {"statusCode": 200, "body": json.dumps({"ok": True})}
 
     text = message.get("text", "")
     user = message.get("from", {})
     chat_id = message.get("chat", {}).get("id")
+    
+    print(f"[WEBHOOK] Text: {text}, User: {user.get('id')}, Chat: {chat_id}")
 
     if not chat_id:
+        print("[WEBHOOK] No chat_id")
         return {"statusCode": 200, "body": json.dumps({"ok": True})}
 
     try:
         if text.startswith("/start"):
             parts = text.split(" ", 1)
+            print(f"[WEBHOOK] /start command, parts: {parts}")
             if len(parts) > 1 and parts[1] == "web_auth":
+                print("[WEBHOOK] Handling web_auth")
                 handle_web_auth(chat_id, user)
             else:
+                print("[WEBHOOK] Handling regular start")
                 handle_start(chat_id)
     except telebot.apihelper.ApiTelegramException as e:
-        print(f"Telegram API error: {e}")
+        print(f"[ERROR] Telegram API error: {e}")
     except Exception as e:
-        print(f"Error processing webhook: {e}")
+        print(f"[ERROR] Error processing webhook: {e}")
+        import traceback
+        print(f"[ERROR] Traceback: {traceback.format_exc()}")
 
     return {"statusCode": 200, "body": json.dumps({"ok": True})}
 
