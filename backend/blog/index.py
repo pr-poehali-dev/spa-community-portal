@@ -4,11 +4,10 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 from datetime import datetime
 
+SCHEMA = "t_p13705114_spa_community_portal"
+
 def get_db_connection():
     conn = psycopg2.connect(os.environ['DATABASE_URL'])
-    cur = conn.cursor()
-    cur.execute("SET search_path TO t_p13705114_spa_community_portal, public")
-    cur.close()
     return conn
 
 def handler(event: dict, context) -> dict:
@@ -86,26 +85,26 @@ def get_posts(query_params: dict) -> dict:
         cur.execute('''
             SELECT DISTINCT p.*, u.name as author_name, u.avatar_url as author_avatar,
                    ARRAY_AGG(DISTINCT t.tag) FILTER (WHERE t.tag IS NOT NULL) as tags
-            FROM blog_posts p
-            LEFT JOIN users u ON p.author_id = u.id
-            LEFT JOIN blog_post_tags t ON p.id = t.post_id
+            FROM t_p13705114_spa_community_portal.blog_posts p
+            LEFT JOIN t_p13705114_spa_community_portal.users u ON p.author_id = u.id
+            LEFT JOIN t_p13705114_spa_community_portal.blog_post_tags t ON p.id = t.post_id
             WHERE p.is_draft = %s AND p.id IN (
                 SELECT post_id FROM blog_post_tags WHERE tag = %s
             )
             GROUP BY p.id, u.name, u.avatar_url
-            ORDER BY p.published_at DESC
+            ORDER BY COALESCE(p.published_at, p.updated_at, p.created_at) DESC
             LIMIT %s OFFSET %s
         ''', (is_draft, tag, limit, offset))
     else:
         cur.execute('''
             SELECT p.*, u.name as author_name, u.avatar_url as author_avatar,
                    ARRAY_AGG(DISTINCT t.tag) FILTER (WHERE t.tag IS NOT NULL) as tags
-            FROM blog_posts p
-            LEFT JOIN users u ON p.author_id = u.id
-            LEFT JOIN blog_post_tags t ON p.id = t.post_id
+            FROM t_p13705114_spa_community_portal.blog_posts p
+            LEFT JOIN t_p13705114_spa_community_portal.users u ON p.author_id = u.id
+            LEFT JOIN t_p13705114_spa_community_portal.blog_post_tags t ON p.id = t.post_id
             WHERE p.is_draft = %s
             GROUP BY p.id, u.name, u.avatar_url
-            ORDER BY p.published_at DESC
+            ORDER BY COALESCE(p.published_at, p.updated_at, p.created_at) DESC
             LIMIT %s OFFSET %s
         ''', (is_draft, limit, offset))
     
@@ -132,9 +131,9 @@ def get_post_by_id(post_id: str) -> dict:
     cur.execute('''
         SELECT p.*, u.name as author_name, u.avatar_url as author_avatar, u.bio as author_bio,
                ARRAY_AGG(DISTINCT t.tag) FILTER (WHERE t.tag IS NOT NULL) as tags
-        FROM blog_posts p
-        LEFT JOIN users u ON p.author_id = u.id
-        LEFT JOIN blog_post_tags t ON p.id = t.post_id
+        FROM t_p13705114_spa_community_portal.blog_posts p
+        LEFT JOIN t_p13705114_spa_community_portal.users u ON p.author_id = u.id
+        LEFT JOIN t_p13705114_spa_community_portal.blog_post_tags t ON p.id = t.post_id
         WHERE p.id = %s
         GROUP BY p.id, u.name, u.avatar_url, u.bio
     ''', (post_id,))
@@ -154,7 +153,7 @@ def get_post_by_id(post_id: str) -> dict:
     if post['tags'] is None:
         post['tags'] = []
     
-    cur.execute('UPDATE blog_posts SET views_count = views_count + 1 WHERE id = %s', (post_id,))
+    cur.execute('UPDATE t_p13705114_spa_community_portal.blog_posts SET views_count = views_count + 1 WHERE id = %s', (post_id,))
     conn.commit()
     
     cur.close()
@@ -197,7 +196,7 @@ def create_post(body: dict, event: dict) -> dict:
     cur = conn.cursor(cursor_factory=RealDictCursor)
     
     cur.execute('''
-        INSERT INTO blog_posts (title, excerpt, content, author_id, cover_image, is_draft, reading_time)
+        INSERT INTO t_p13705114_spa_community_portal.blog_posts (title, excerpt, content, author_id, cover_image, is_draft, reading_time)
         VALUES (%s, %s, %s, %s, %s, %s, %s)
         RETURNING id
     ''', (title, excerpt, content, user_id, cover_image, is_draft, reading_time))
@@ -206,7 +205,7 @@ def create_post(body: dict, event: dict) -> dict:
     
     for tag in tags:
         cur.execute('''
-            INSERT INTO blog_post_tags (post_id, tag)
+            INSERT INTO t_p13705114_spa_community_portal.blog_post_tags (post_id, tag)
             VALUES (%s, %s)
             ON CONFLICT DO NOTHING
         ''', (post_id, tag))
@@ -235,7 +234,7 @@ def update_post(post_id: str, body: dict, event: dict) -> dict:
     conn = get_db_connection()
     cur = conn.cursor()
     
-    cur.execute('SELECT author_id FROM blog_posts WHERE id = %s', (post_id,))
+    cur.execute('SELECT author_id FROM t_p13705114_spa_community_portal.blog_posts WHERE id = %s', (post_id,))
     result = cur.fetchone()
     
     if not result or result[0] != user_id:
@@ -284,7 +283,7 @@ def update_post(post_id: str, body: dict, event: dict) -> dict:
     if update_fields:
         params.append(post_id)
         cur.execute(f'''
-            UPDATE blog_posts
+            UPDATE t_p13705114_spa_community_portal.blog_posts
             SET {', '.join(update_fields)}, updated_at = CURRENT_TIMESTAMP
             WHERE id = %s
         ''', params)
@@ -293,7 +292,7 @@ def update_post(post_id: str, body: dict, event: dict) -> dict:
         cur.execute('DELETE FROM blog_post_tags WHERE post_id = %s', (post_id,))
         for tag in body['tags']:
             cur.execute('''
-                INSERT INTO blog_post_tags (post_id, tag)
+                INSERT INTO t_p13705114_spa_community_portal.blog_post_tags (post_id, tag)
                 VALUES (%s, %s)
                 ON CONFLICT DO NOTHING
             ''', (post_id, tag))
@@ -323,7 +322,7 @@ def toggle_post_like(post_id: str, event: dict) -> dict:
     cur = conn.cursor()
     
     cur.execute('''
-        SELECT id FROM blog_post_likes
+        SELECT id FROM t_p13705114_spa_community_portal.blog_post_likes
         WHERE post_id = %s AND user_id = %s
     ''', (post_id, user_id))
     
@@ -331,13 +330,13 @@ def toggle_post_like(post_id: str, event: dict) -> dict:
     
     if existing_like:
         cur.execute('''
-            DELETE FROM blog_post_likes
+            DELETE FROM t_p13705114_spa_community_portal.blog_post_likes
             WHERE post_id = %s AND user_id = %s
         ''', (post_id, user_id))
         liked = False
     else:
         cur.execute('''
-            INSERT INTO blog_post_likes (post_id, user_id)
+            INSERT INTO t_p13705114_spa_community_portal.blog_post_likes (post_id, user_id)
             VALUES (%s, %s)
         ''', (post_id, user_id))
         liked = True
@@ -360,7 +359,7 @@ def get_post_comments(post_id: str) -> dict:
     cur.execute('''
         SELECT c.*, u.name as user_name, u.avatar_url as user_avatar
         FROM blog_comments c
-        LEFT JOIN users u ON c.user_id = u.id
+        LEFT JOIN t_p13705114_spa_community_portal.users u ON c.user_id = u.id
         WHERE c.post_id = %s
         ORDER BY c.created_at DESC
     ''', (post_id,))
@@ -437,7 +436,7 @@ def get_user_id_from_token(event: dict) -> int:
         cur = conn.cursor()
         
         cur.execute('''
-            SELECT user_id FROM user_sessions
+            SELECT user_id FROM t_p13705114_spa_community_portal.user_sessions
             WHERE session_token = %s AND expires_at > CURRENT_TIMESTAMP
         ''', (token,))
         

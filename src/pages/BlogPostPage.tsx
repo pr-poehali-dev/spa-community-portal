@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -38,6 +39,7 @@ interface Comment {
 export default function BlogPostPage() {
   const { postId } = useParams();
   const navigate = useNavigate();
+  const { token } = useAuth();
   const [post, setPost] = useState<BlogPost | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -78,6 +80,9 @@ export default function BlogPostPage() {
     try {
       await fetch(`https://functions.poehali.dev/75e27ae0-e41a-4c42-8f6a-0d66ca396765?action=like&post_id=${postId}`, {
         method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
       });
       setLiked(!liked);
       setPost({
@@ -102,6 +107,7 @@ export default function BlogPostPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
           post_id: postId,
