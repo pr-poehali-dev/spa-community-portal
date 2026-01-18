@@ -32,8 +32,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const checkAuth = async () => {
     const storedToken = localStorage.getItem('auth_token');
+    console.log('[AuthContext] Проверка токена:', storedToken?.substring(0, 30) + '...');
     
     if (!storedToken) {
+      console.log('[AuthContext] Токен не найден');
       setLoading(false);
       return;
     }
@@ -44,30 +46,37 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (parts.length === 3) {
         try {
           const payload = JSON.parse(atob(parts[1]));
+          console.log('[AuthContext] JWT payload:', payload);
           
           // Проверяем, не истек ли токен
           if (payload.exp && payload.exp * 1000 > Date.now()) {
+            console.log('[AuthContext] Токен действителен до:', new Date(payload.exp * 1000));
             // Если есть user_id в токене, значит это Telegram JWT
             if (payload.user_id) {
               // Для Telegram авторизации используем данные из localStorage
               const telegramUser = localStorage.getItem('telegram_user');
+              console.log('[AuthContext] Telegram user из localStorage:', telegramUser);
               if (telegramUser) {
                 setUser(JSON.parse(telegramUser));
                 setToken(storedToken);
                 setLoading(false);
+                console.log('[AuthContext] Сессия восстановлена');
                 return;
               }
             }
           } else {
             // Токен истек
+            console.log('[AuthContext] Токен истек');
             localStorage.removeItem('auth_token');
             localStorage.removeItem('telegram_user');
+            localStorage.removeItem('telegram_auth_refresh_token');
             setToken(null);
             setUser(null);
             setLoading(false);
             return;
           }
         } catch (e) {
+          console.log('[AuthContext] Ошибка декодирования JWT:', e);
           // Не JWT токен, продолжаем проверку через API
         }
       }
