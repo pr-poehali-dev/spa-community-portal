@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,6 +9,25 @@ const AdminDashboard = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  useEffect(() => {
+    // Проверяем авторизацию при загрузке
+    const isAuthenticated = localStorage.getItem('admin_authenticated');
+    const authTime = localStorage.getItem('admin_auth_time');
+
+    // Если не авторизован или сессия истекла (24 часа), перенаправляем на страницу входа
+    if (!isAuthenticated || !authTime || Date.now() - parseInt(authTime) > 24 * 60 * 60 * 1000) {
+      localStorage.removeItem('admin_authenticated');
+      localStorage.removeItem('admin_auth_time');
+      navigate('/admin/login');
+    }
+  }, [navigate]);
+
+  const handleLogout = () => {
+    localStorage.removeItem('admin_authenticated');
+    localStorage.removeItem('admin_auth_time');
+    navigate('/admin/login');
+  };
 
   const menuSections = [
     {
@@ -134,11 +153,11 @@ const AdminDashboard = () => {
                 </Button>
                 <Button
                   variant="outline"
-                  onClick={() => navigate('/profile')}
+                  onClick={handleLogout}
                   className="border-orange-200 hover:bg-orange-50"
                 >
-                  <Icon name="User" className="h-4 w-4 mr-2" />
-                  Профиль
+                  <Icon name="LogOut" className="h-4 w-4 mr-2" />
+                  Выйти
                 </Button>
               </div>
             </div>

@@ -31,6 +31,7 @@ import AdminBookingsPage from "./pages/admin/AdminBookingsPage";
 import AdminSettingsPage from "./pages/admin/AdminSettingsPage";
 import AdminRoleApplicationsPage from "./pages/admin/AdminRoleApplicationsPage";
 import AdminBlogPage from "./pages/admin/AdminBlogPage";
+import AdminLoginPage from "./pages/AdminLoginPage";
 import ApplyRolePage from "./pages/ApplyRolePage";
 import AccountPage from "./pages/AccountPage";
 import NotFound from "./pages/NotFound";
@@ -45,6 +46,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
+            <Route path="/admin/login" element={<AdminLoginPage />} />
             <Route path="/admin" element={<AdminDashboard />}>
               <Route path="events" element={<AdminEventsPage />} />
               <Route path="saunas" element={<AdminSaunasPage />} />
