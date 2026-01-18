@@ -30,13 +30,14 @@ const AdminRoleApplicationsPage = () => {
   const loadApplications = async () => {
     try {
       const data = await adminApi.roles.getApplications();
-      setApplications(data);
+      setApplications(Array.isArray(data) ? data : []);
     } catch (error) {
       toast({
         title: 'Ошибка',
         description: 'Не удалось загрузить заявки',
         variant: 'destructive',
       });
+      setApplications([]);
     } finally {
       setLoading(false);
     }
