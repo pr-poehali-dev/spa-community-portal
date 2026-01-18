@@ -4,6 +4,7 @@ import { useTelegramAuth } from '@/components/extensions/telegram-bot/useTelegra
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Icon from '@/components/ui/icon';
+import Cookies from 'js-cookie';
 
 const TELEGRAM_AUTH_URL = 'https://functions.poehali.dev/dc3fb91d-b358-49d4-8739-e624e705ab71';
 const TELEGRAM_BOT_USERNAME = import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'SparcomAuth_bot';
@@ -55,7 +56,9 @@ const TelegramCallbackPage = () => {
             user: data.user
           });
 
-          // Сохраняем в localStorage для AuthContext
+          // Сохраняем в cookies и localStorage для AuthContext
+          Cookies.set('auth_token', data.access_token, { expires: 30, sameSite: 'lax' });
+          Cookies.set('telegram_user', JSON.stringify(data.user), { expires: 30, sameSite: 'lax' });
           localStorage.setItem('auth_token', data.access_token);
           localStorage.setItem('telegram_user', JSON.stringify(data.user));
           

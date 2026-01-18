@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import Cookies from 'js-cookie';
 
 const AUTH_API_URL = 'https://functions.poehali.dev/dc13fdd2-eb59-4658-8080-4ab0c13a84af';
 
@@ -27,11 +28,13 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(localStorage.getItem('auth_token'));
+  const [token, setToken] = useState<string | null>(
+    Cookies.get('auth_token') || localStorage.getItem('auth_token')
+  );
   const [loading, setLoading] = useState(true);
 
   const checkAuth = async () => {
-    const storedToken = localStorage.getItem('auth_token');
+    const storedToken = Cookies.get('auth_token') || localStorage.getItem('auth_token');
     console.log('[AuthContext] Проверка токена:', storedToken?.substring(0, 30) + '...');
     
     if (!storedToken) {
@@ -53,9 +56,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             console.log('[AuthContext] Токен действителен до:', new Date(payload.exp * 1000));
             // Если есть user_id в токене, значит это Telegram JWT
             if (payload.user_id) {
-              // Для Telegram авторизации используем данные из localStorage
-              const telegramUser = localStorage.getItem('telegram_user');
-              console.log('[AuthContext] Telegram user из localStorage:', telegramUser);
+              // Для Telegram авторизации используем данные из cookies/localStorage
+              const telegramUser = Cookies.get('telegram_user') || localStorage.getItem('telegram_user');
+              console.log('[AuthContext] Telegram user из хранилища:', telegramUser);
               if (telegramUser) {
                 setUser(JSON.parse(telegramUser));
                 setToken(storedToken);
@@ -67,6 +70,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           } else {
             // Токен истек
             console.log('[AuthContext] Токен истек');
+            Cookies.remove('auth_token');
+            Cookies.remove('telegram_user');
             localStorage.removeItem('auth_token');
             localStorage.removeItem('telegram_user');
             localStorage.removeItem('telegram_auth_refresh_token');
@@ -94,12 +99,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(data.user);
         setToken(storedToken);
       } else {
+        Cookies.remove('auth_token');
         localStorage.removeItem('auth_token');
         setToken(null);
         setUser(null);
       }
     } catch (error) {
       console.error('Ошибка проверки авторизации:', error);
+      Cookies.remove('auth_token');
       localStorage.removeItem('auth_token');
       setToken(null);
       setUser(null);
@@ -132,6 +139,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       const data = await response.json();
+      // Сохраняем токен в cookies на 30 дней
+      Cookies.set('auth_token', data.token, { expires: 30, sameSite: 'lax' });
       localStorage.setItem('auth_token', data.token);
       setToken(data.token);
       setUser(data.user);
@@ -163,6 +172,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       const data = await response.json();
+      // Сохраняем токен в cookies на 30 дней
+      Cookies.set('auth_token', data.token, { expires: 30, sameSite: 'lax' });
       localStorage.setItem('auth_token', data.token);
       setToken(data.token);
       setUser(data.user);
@@ -186,7 +197,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch (error) {
       console.error('Ошибка при выходе:', error);
     } finally {
+      Cookies.remove('auth_token');
+      Cookies.remove('telegram_user');
       localStorage.removeItem('auth_token');
+      localStorage.removeItem('telegram_user');
+      localStorage.removeItem('telegram_auth_refresh_token');
       setToken(null);
       setUser(null);
     }
