@@ -143,7 +143,7 @@ def handle_web_auth(chat_id: int, user: dict) -> None:
 def handle_start(chat_id: int) -> None:
     """Обработка команды /start без параметров."""
     bot = get_bot()
-    bot.send_message(chat_id, "Привет! Используйте кнопку «Войти через Telegram» на сайте.")
+    bot.send_message(chat_id, "Привет! Используйте кнопку «Войти через Telegram» на сайте sparcom.ru.")
 
 
 def process_webhook(body: dict) -> dict:
