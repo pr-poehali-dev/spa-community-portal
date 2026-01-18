@@ -94,13 +94,13 @@ export const Layout = ({ children }: LayoutProps) => {
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
-                      <Link to={user.role === 'participant' ? '/account/dashboard' : `/${user.role}/dashboard`} className="cursor-pointer">
+                      <Link to="/account" className="cursor-pointer">
                         <Icon name="LayoutDashboard" className="mr-2 h-4 w-4" />
                         Личный кабинет
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
-                      <Link to={user.role === 'participant' ? '/account/profile' : `/${user.role}/profile`} className="cursor-pointer">
+                      <Link to="/account" className="cursor-pointer">
                         <Icon name="Settings" className="mr-2 h-4 w-4" />
                         Настройки
                       </Link>
