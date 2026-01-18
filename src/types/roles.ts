@@ -32,6 +32,8 @@ export interface RoleApplication {
   reviewer_notes?: string;
   created_at: string;
   updated_at: string;
+  name?: string;
+  email?: string;
 }
 
 export interface UserReputation {

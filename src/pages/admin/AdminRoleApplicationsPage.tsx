@@ -114,10 +114,18 @@ const AdminRoleApplicationsPage = () => {
                       </div>
 
                       <div className="space-y-2 text-gray-600 mb-4">
-                        <div className="flex items-center gap-2">
-                          <Icon name="User" className="h-4 w-4" />
-                          <span>ID пользователя: {app.user_id}</span>
-                        </div>
+                        {app.name && (
+                          <div className="flex items-center gap-2">
+                            <Icon name="User" className="h-4 w-4" />
+                            <span className="font-medium">{app.name}</span>
+                          </div>
+                        )}
+                        {app.email && (
+                          <div className="flex items-center gap-2">
+                            <Icon name="Mail" className="h-4 w-4" />
+                            <span>{app.email}</span>
+                          </div>
+                        )}
                         <div className="flex items-center gap-2">
                           <Icon name="Calendar" className="h-4 w-4" />
                           <span>Дата подачи: {new Date(app.created_at).toLocaleDateString('ru-RU')}</span>
@@ -200,7 +208,8 @@ const AdminRoleApplicationsPage = () => {
                       </div>
 
                       <div className="space-y-2 text-gray-600 text-sm">
-                        <div>ID пользователя: {app.user_id}</div>
+                        {app.name && <div className="font-medium">{app.name}</div>}
+                        {app.email && <div>{app.email}</div>}
                         <div>Рассмотрел: {app.reviewer_name || 'Администратор'}</div>
                         {app.reviewer_notes && (
                           <div className="bg-gray-50 rounded p-2 mt-2">

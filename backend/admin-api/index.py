@@ -141,7 +141,7 @@ def response_json(data, status=200):
 
 def get_all_events(conn):
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM events ORDER BY date DESC")
+    cursor.execute("SELECT * FROM t_p13705114_spa_community_portal.events ORDER BY date DESC")
     result = cursor.fetchall()
     cursor.close()
     return [dict(row) for row in result]
@@ -149,7 +149,7 @@ def get_all_events(conn):
 def create_event(conn, data):
     cursor = conn.cursor()
     cursor.execute(
-        """INSERT INTO events (slug, title, description, date, time, location, type, 
+        """INSERT INTO t_p13705114_spa_community_portal.events (slug, title, description, date, time, location, type, 
            price, available_spots, total_spots, image_url, program, rules)
            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id""",
         (data.get('slug'), data.get('title'), data.get('description'),
@@ -166,7 +166,7 @@ def create_event(conn, data):
 def update_event(conn, event_id, data):
     cursor = conn.cursor()
     cursor.execute(
-        """UPDATE events SET title=%s, description=%s, date=%s, time=%s, location=%s,
+        """UPDATE t_p13705114_spa_community_portal.events SET title=%s, description=%s, date=%s, time=%s, location=%s,
            type=%s, price=%s, total_spots=%s, image_url=%s, program=%s, rules=%s,
            updated_at=CURRENT_TIMESTAMP WHERE id=%s""",
         (data.get('title'), data.get('description'), data.get('date'), data.get('time'),
@@ -180,14 +180,14 @@ def update_event(conn, event_id, data):
 
 def delete_event(conn, event_id):
     cursor = conn.cursor()
-    cursor.execute("DELETE FROM events WHERE id=%s", (event_id,))
+    cursor.execute("DELETE FROM t_p13705114_spa_community_portal.events WHERE id=%s", (event_id,))
     conn.commit()
     cursor.close()
     return {'success': True}
 
 def get_all_saunas(conn):
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM baths ORDER BY name")
+    cursor.execute("SELECT * FROM t_p13705114_spa_community_portal.baths ORDER BY name")
     result = cursor.fetchall()
     cursor.close()
     return [dict(row) for row in result]
@@ -195,7 +195,7 @@ def get_all_saunas(conn):
 def create_sauna(conn, data):
     cursor = conn.cursor()
     cursor.execute(
-        """INSERT INTO baths (slug, name, address, description, capacity, 
+        """INSERT INTO t_p13705114_spa_community_portal.baths (slug, name, address, description, capacity, 
            price_per_hour, features, images)
            VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING id""",
         (data.get('slug'), data.get('name'), data.get('address'), data.get('description'),
@@ -210,7 +210,7 @@ def create_sauna(conn, data):
 def update_sauna(conn, sauna_id, data):
     cursor = conn.cursor()
     cursor.execute(
-        """UPDATE baths SET name=%s, address=%s, description=%s, capacity=%s,
+        """UPDATE t_p13705114_spa_community_portal.baths SET name=%s, address=%s, description=%s, capacity=%s,
            price_per_hour=%s, features=%s, images=%s, updated_at=CURRENT_TIMESTAMP
            WHERE id=%s""",
         (data.get('name'), data.get('address'), data.get('description'),
@@ -224,14 +224,14 @@ def update_sauna(conn, sauna_id, data):
 
 def delete_sauna(conn, sauna_id):
     cursor = conn.cursor()
-    cursor.execute("DELETE FROM baths WHERE id=%s", (sauna_id,))
+    cursor.execute("DELETE FROM t_p13705114_spa_community_portal.baths WHERE id=%s", (sauna_id,))
     conn.commit()
     cursor.close()
     return {'success': True}
 
 def get_all_masters(conn):
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM masters ORDER BY name")
+    cursor.execute("SELECT * FROM t_p13705114_spa_community_portal.masters ORDER BY name")
     result = cursor.fetchall()
     cursor.close()
     return [dict(row) for row in result]
@@ -239,7 +239,7 @@ def get_all_masters(conn):
 def create_master(conn, data):
     cursor = conn.cursor()
     cursor.execute(
-        """INSERT INTO masters (slug, name, specialization, experience, description,
+        """INSERT INTO t_p13705114_spa_community_portal.masters (slug, name, specialization, experience, description,
            avatar_url, services) VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id""",
         (data.get('slug'), data.get('name'), data.get('specialization'),
          data.get('experience'), data.get('description'), data.get('avatar_url'),
@@ -253,7 +253,7 @@ def create_master(conn, data):
 def update_master(conn, master_id, data):
     cursor = conn.cursor()
     cursor.execute(
-        """UPDATE masters SET name=%s, specialization=%s, experience=%s, description=%s,
+        """UPDATE t_p13705114_spa_community_portal.masters SET name=%s, specialization=%s, experience=%s, description=%s,
            avatar_url=%s, services=%s, updated_at=CURRENT_TIMESTAMP WHERE id=%s""",
         (data.get('name'), data.get('specialization'), data.get('experience'),
          data.get('description'), data.get('avatar_url'),
@@ -265,7 +265,7 @@ def update_master(conn, master_id, data):
 
 def delete_master(conn, master_id):
     cursor = conn.cursor()
-    cursor.execute("DELETE FROM masters WHERE id=%s", (master_id,))
+    cursor.execute("DELETE FROM t_p13705114_spa_community_portal.masters WHERE id=%s", (master_id,))
     conn.commit()
     cursor.close()
     return {'success': True}
@@ -273,7 +273,7 @@ def delete_master(conn, master_id):
 def get_all_users(conn):
     cursor = conn.cursor()
     cursor.execute(
-        """SELECT u.id, u.email, u.first_name, u.last_name, u.created_at, u.is_active,
+        """SELECT u.id, u.email, u.name, u.phone, u.telegram, u.created_at, u.is_active,
            COUNT(DISTINCT ur.id) as roles_count
            FROM t_p13705114_spa_community_portal.users u
            LEFT JOIN t_p13705114_spa_community_portal.user_roles ur ON u.id = ur.user_id
@@ -301,7 +301,7 @@ def get_admin_stats(conn):
 def create_user(conn, data):
     cursor = conn.cursor()
     cursor.execute(
-        """INSERT INTO users (email, password_hash, name, phone, telegram, role)
+        """INSERT INTO t_p13705114_spa_community_portal.users (email, password_hash, name, phone, telegram, role)
            VALUES (%s, %s, %s, %s, %s, %s) RETURNING id""",
         (data.get('email'), data.get('password_hash', ''), data.get('name'),
          data.get('phone'), data.get('telegram'), data.get('role', 'participant'))
@@ -314,7 +314,7 @@ def create_user(conn, data):
 def update_user(conn, user_id, data):
     cursor = conn.cursor()
     cursor.execute(
-        """UPDATE users SET name=%s, phone=%s, telegram=%s, role=%s, is_active=%s,
+        """UPDATE t_p13705114_spa_community_portal.users SET name=%s, phone=%s, telegram=%s, role=%s, is_active=%s,
            updated_at=CURRENT_TIMESTAMP WHERE id=%s""",
         (data.get('name'), data.get('phone'), data.get('telegram'),
          data.get('role'), data.get('is_active'), user_id)
@@ -325,7 +325,7 @@ def update_user(conn, user_id, data):
 
 def delete_user(conn, user_id):
     cursor = conn.cursor()
-    cursor.execute("DELETE FROM users WHERE id=%s", (user_id,))
+    cursor.execute("DELETE FROM t_p13705114_spa_community_portal.users WHERE id=%s", (user_id,))
     conn.commit()
     cursor.close()
     return {'success': True}
@@ -334,9 +334,9 @@ def get_all_bookings(conn):
     cursor = conn.cursor()
     cursor.execute(
         """SELECT b.*, e.title as event_title, u.email as user_email, u.name as user_name
-           FROM bookings b 
-           LEFT JOIN events e ON b.event_id = e.id
-           LEFT JOIN users u ON b.user_id = u.id
+           FROM t_p13705114_spa_community_portal.bookings b 
+           LEFT JOIN t_p13705114_spa_community_portal.events e ON b.event_id = e.id
+           LEFT JOIN t_p13705114_spa_community_portal.users u ON b.user_id = u.id
            ORDER BY b.created_at DESC"""
     )
     result = cursor.fetchall()
@@ -346,7 +346,7 @@ def get_all_bookings(conn):
 def update_booking(conn, booking_id, data):
     cursor = conn.cursor()
     cursor.execute(
-        """UPDATE bookings SET status=%s, updated_at=CURRENT_TIMESTAMP WHERE id=%s""",
+        """UPDATE t_p13705114_spa_community_portal.bookings SET status=%s, updated_at=CURRENT_TIMESTAMP WHERE id=%s""",
         (data.get('status'), booking_id)
     )
     conn.commit()
@@ -355,7 +355,7 @@ def update_booking(conn, booking_id, data):
 
 def delete_booking(conn, booking_id):
     cursor = conn.cursor()
-    cursor.execute("DELETE FROM bookings WHERE id=%s", (booking_id,))
+    cursor.execute("DELETE FROM t_p13705114_spa_community_portal.bookings WHERE id=%s", (booking_id,))
     conn.commit()
     cursor.close()
     return {'success': True}
@@ -370,15 +370,15 @@ def get_user_roles(conn, user_id):
                    WHEN 'editor' THEN row_to_json(el.*)
                    ELSE NULL
                END as level_data
-        FROM user_roles ur
-        LEFT JOIN organizer_levels ol ON ol.user_id = ur.user_id AND ur.role_type = 'organizer'
-        LEFT JOIN master_levels ml ON ml.user_id = ur.user_id AND ur.role_type = 'master'
-        LEFT JOIN editor_levels el ON el.user_id = ur.user_id AND ur.role_type = 'editor'
+        FROM t_p13705114_spa_community_portal.user_roles ur
+        LEFT JOIN t_p13705114_spa_community_portal.organizer_levels ol ON ol.user_id = ur.user_id AND ur.role_type = 'organizer'
+        LEFT JOIN t_p13705114_spa_community_portal.master_levels ml ON ml.user_id = ur.user_id AND ur.role_type = 'master'
+        LEFT JOIN t_p13705114_spa_community_portal.editor_levels el ON el.user_id = ur.user_id AND ur.role_type = 'editor'
         WHERE ur.user_id = %s""",
         (user_id,)
     )
     roles = cursor.fetchall()
-    cursor.execute("SELECT * FROM user_reputation WHERE user_id = %s", (user_id,))
+    cursor.execute("SELECT * FROM t_p13705114_spa_community_portal.user_reputation WHERE user_id = %s", (user_id,))
     reputation = cursor.fetchone()
     cursor.close()
     return {
@@ -390,7 +390,7 @@ def get_role_applications(conn, user_id=None):
     cursor = conn.cursor()
     if user_id:
         cursor.execute(
-            """SELECT ra.*, u.first_name, u.last_name, u.email
+            """SELECT ra.*, u.name, u.email
                FROM t_p13705114_spa_community_portal.role_applications ra
                JOIN t_p13705114_spa_community_portal.users u ON ra.user_id = u.id
                WHERE ra.user_id = %s
@@ -399,7 +399,7 @@ def get_role_applications(conn, user_id=None):
         )
     else:
         cursor.execute(
-            """SELECT ra.*, u.first_name, u.last_name, u.email
+            """SELECT ra.*, u.name, u.email
                FROM t_p13705114_spa_community_portal.role_applications ra
                JOIN t_p13705114_spa_community_portal.users u ON ra.user_id = u.id
                ORDER BY ra.created_at DESC"""
@@ -415,7 +415,7 @@ def create_role_application(conn, data):
     application_data = data.get('application_data', {})
     
     cursor.execute(
-        "SELECT id FROM role_applications WHERE user_id = %s AND role_type = %s AND status = 'pending'",
+        "SELECT id FROM t_p13705114_spa_community_portal.role_applications WHERE user_id = %s AND role_type = %s AND status = 'pending'",
         (user_id, role_type)
     )
     if cursor.fetchone():
@@ -423,7 +423,7 @@ def create_role_application(conn, data):
         return {'error': 'Application already exists'}
     
     cursor.execute(
-        """INSERT INTO role_applications (user_id, role_type, application_data, status)
+        """INSERT INTO t_p13705114_spa_community_portal.role_applications (user_id, role_type, application_data, status)
            VALUES (%s, %s, %s, 'pending') RETURNING id, created_at""",
         (user_id, role_type, json.dumps(application_data))
     )
@@ -435,7 +435,7 @@ def create_role_application(conn, data):
 def review_role_application(conn, app_id, data):
     cursor = conn.cursor()
     status = data.get('status')
-    rejection_reason = data.get('rejection_reason')
+    rejection_reason = data.get('rejection_reason') or data.get('notes')
     
     if status not in ['approved', 'rejected']:
         cursor.close()
