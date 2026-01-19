@@ -78,6 +78,18 @@ const AdminRoleApplicationsPage = () => {
     return <div className="flex items-center justify-center h-64">Загрузка...</div>;
   }
 
+  if (applications.length === 0) {
+    return (
+      <div className="space-y-6">
+        <h2 className="text-3xl font-bold text-orange-900">Заявки на роли</h2>
+        <div className="text-center py-12">
+          <Icon name="Inbox" className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+          <p className="text-lg text-muted-foreground">Заявок пока нет</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
