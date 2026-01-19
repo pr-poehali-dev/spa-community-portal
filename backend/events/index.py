@@ -208,10 +208,10 @@ def get_event_detail(slug: str = None, event_id: str = None) -> Optional[dict]:
         SELECT 
             s.id, s.slug, s.title, s.description, s.duration_minutes, s.base_price,
             s.gender_type, s.city, s.program, s.rules, s.images, s.created_at,
-            b.id as bathhouse_id, b.name as bathhouse_name, b.address as bathhouse_address,
+            b.id as bathhouse_id, b.slug as bathhouse_slug, b.name as bathhouse_name, b.address as bathhouse_address,
             b.description as bathhouse_description, b.images as bathhouse_images,
             b.rating as bathhouse_rating, b.reviews_count as bathhouse_reviews,
-            m.id as master_id, m.name as master_name, m.avatar_url as master_avatar,
+            m.id as master_id, m.slug as master_slug, m.name as master_name, m.avatar_url as master_avatar,
             m.specialization as master_specialization, m.experience as master_experience,
             m.rating as master_rating, m.reviews_count as master_reviews,
             u.id as organizer_id, u.name as organizer_name, u.email as organizer_email,
@@ -245,28 +245,30 @@ def get_event_detail(slug: str = None, event_id: str = None) -> Optional[dict]:
         'created_at': row[11].isoformat() if row[11] else None,
         'bathhouse': {
             'id': row[12],
-            'name': row[13],
-            'address': row[14],
-            'description': row[15],
-            'images': row[16] if row[16] else [],
-            'rating': float(row[17]) if row[17] else 0,
-            'reviews_count': row[18] or 0
+            'slug': row[13],
+            'name': row[14],
+            'address': row[15],
+            'description': row[16],
+            'images': row[17] if row[17] else [],
+            'rating': float(row[18]) if row[18] else 0,
+            'reviews_count': row[19] or 0
         } if row[12] else None,
         'master': {
-            'id': row[19],
-            'name': row[20],
-            'avatar_url': row[21],
-            'specialization': row[22],
-            'experience': row[23],
-            'rating': float(row[24]) if row[24] else 0,
-            'reviews_count': row[25] or 0
-        } if row[19] else None,
+            'id': row[20],
+            'slug': row[21],
+            'name': row[22],
+            'avatar_url': row[23],
+            'specialization': row[24],
+            'experience': row[25],
+            'rating': float(row[26]) if row[26] else 0,
+            'reviews_count': row[27] or 0
+        } if row[20] else None,
         'organizer': {
-            'id': row[26],
-            'name': row[27],
-            'email': row[28],
-            'phone': row[29],
-            'telegram': row[30]
+            'id': row[28],
+            'name': row[29],
+            'email': row[30],
+            'phone': row[31],
+            'telegram': row[32]
         } if row[26] else None
     }
     

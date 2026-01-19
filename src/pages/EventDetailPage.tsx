@@ -322,7 +322,10 @@ const EventDetailPage = () => {
                       <Icon name="Home" className="h-4 w-4 text-primary" />
                       Баня
                     </p>
-                    <div className="space-y-1">
+                    <Link 
+                      to={`/baths/${event.bathhouse.slug}`}
+                      className="block space-y-1 hover:bg-primary/5 p-2 rounded-lg transition-colors -m-2"
+                    >
                       <p className="text-sm font-medium">{event.bathhouse.name}</p>
                       <p className="text-xs text-muted-foreground flex items-start gap-1">
                         <Icon name="MapPin" className="h-3 w-3 mt-0.5 flex-shrink-0" />
@@ -335,7 +338,7 @@ const EventDetailPage = () => {
                           <span className="text-muted-foreground">({event.bathhouse.reviews_count} отзывов)</span>
                         </div>
                       )}
-                    </div>
+                    </Link>
                   </div>
                 )}
 
@@ -345,7 +348,10 @@ const EventDetailPage = () => {
                       <Icon name="User" className="h-4 w-4 text-primary" />
                       Мастер
                     </p>
-                    <div className="flex items-center gap-3">
+                    <Link 
+                      to={`/masters/${event.master.slug}`}
+                      className="flex items-center gap-3 hover:bg-primary/5 p-2 rounded-lg transition-colors -m-2"
+                    >
                       {event.master.avatar_url && (
                         <img 
                           src={event.master.avatar_url} 
@@ -365,7 +371,7 @@ const EventDetailPage = () => {
                           </div>
                         )}
                       </div>
-                    </div>
+                    </Link>
                   </div>
                 )}
 

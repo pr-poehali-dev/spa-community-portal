@@ -17,6 +17,7 @@ export interface Event {
   rules?: string[];
   bathhouse?: {
     id: number;
+    slug?: string;
     name: string;
     address: string;
     description?: string;
@@ -25,6 +26,7 @@ export interface Event {
   };
   master?: {
     id: number;
+    slug?: string;
     name: string;
     avatar_url: string;
     specialization?: string;
