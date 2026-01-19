@@ -1,19 +1,16 @@
 import { useEffect, useState } from 'react';
 import { useParams, Navigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Icon from '@/components/ui/icon';
-import { getEventBySlug, createBooking, Event } from '@/lib/api';
+import { getEventBySlug, getEventSchedules, Event, ServiceSchedule } from '@/lib/api';
 
 const getTypeLabel = (type: string) => {
   switch(type) {
-    case 'men': return 'Мужской';
-    case 'women': return 'Женский';
+    case 'male': return 'Мужской';
+    case 'female': return 'Женский';
     case 'mixed': return 'Совместный';
     default: return '';
   }
@@ -21,8 +18,8 @@ const getTypeLabel = (type: string) => {
 
 const getTypeBadgeColor = (type: string) => {
   switch(type) {
-    case 'men': return 'bg-blue-100 text-blue-800';
-    case 'women': return 'bg-pink-100 text-pink-800';
+    case 'male': return 'bg-blue-100 text-blue-800';
+    case 'female': return 'bg-pink-100 text-pink-800';
     case 'mixed': return 'bg-purple-100 text-purple-800';
     default: return '';
   }
@@ -31,66 +28,84 @@ const getTypeBadgeColor = (type: string) => {
 const EventDetailPage = () => {
   const { slug } = useParams();
   const [event, setEvent] = useState<Event | null>(null);
+  const [schedules, setSchedules] = useState<ServiceSchedule[]>([]);
   const [loading, setLoading] = useState(true);
-  const [bookingData, setBookingData] = useState({ name: '', phone: '', telegram: '' });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [schedulesLoading, setSchedulesLoading] = useState(false);
 
   useEffect(() => {
     if (slug) {
-      getEventBySlug(slug)
-        .then(data => setEvent(data))
-        .catch(console.error)
-        .finally(() => setLoading(false));
+      loadEventData(slug);
     }
   }, [slug]);
 
-  const submitBooking = async () => {
-    if (!event || !bookingData.name || !bookingData.phone) {
-      alert('Пожалуйста, заполните все обязательные поля');
-      return;
-    }
-
-    setIsSubmitting(true);
+  const loadEventData = async (eventSlug: string) => {
+    setLoading(true);
     try {
-      await createBooking({
-        event_id: event.id,
-        name: bookingData.name,
-        phone: bookingData.phone,
-        telegram: bookingData.telegram
-      });
-      alert('Заявка отправлена! Мы свяжемся с вами в Telegram для подтверждения.');
-      setBookingData({ name: '', phone: '', telegram: '' });
-      setDialogOpen(false);
+      const eventData = await getEventBySlug(eventSlug);
+      setEvent(eventData);
       
-      if (slug) {
-        getEventBySlug(slug).then(data => setEvent(data));
+      if (eventData && eventData.id) {
+        loadSchedules(eventData.id);
       }
     } catch (error) {
-      alert('Ошибка при отправке заявки. Попробуйте ещё раз.');
+      console.error('Failed to load event:', error);
     } finally {
-      setIsSubmitting(false);
+      setLoading(false);
     }
+  };
+
+  const loadSchedules = async (eventId: string) => {
+    setSchedulesLoading(true);
+    try {
+      const schedulesData = await getEventSchedules(eventId);
+      setSchedules(schedulesData.schedules || []);
+    } catch (error) {
+      console.error('Failed to load schedules:', error);
+    } finally {
+      setSchedulesLoading(false);
+    }
+  };
+
+  const formatDateTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('ru-RU', { 
+      day: 'numeric', 
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const getImageUrl = (event: Event) => {
+    if (event.image_url) return event.image_url;
+    if (event.images && event.images.length > 0) return event.images[0].url;
+    return 'https://cdn.poehali.dev/projects/ef3c479a-8168-43df-a113-89d5072d1123/files/placeholder.jpg';
   };
 
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-12 flex justify-center">
-        <p className="text-muted-foreground">Загрузка...</p>
+        <div className="flex items-center gap-2">
+          <Icon name="Loader2" className="h-5 w-5 animate-spin" />
+          <p className="text-muted-foreground">Загрузка...</p>
+        </div>
       </div>
     );
   }
   
   if (!event) {
     return <Navigate to="/404" replace />;
-  };
+  }
+
+  const imageUrl = getImageUrl(event);
 
   return (
     <div className="animate-fade-in">
       <div 
         className="relative h-[50vh] bg-cover bg-center"
         style={{ 
-          backgroundImage: `url(${event.image_url})`,
+          backgroundImage: `url(${imageUrl})`,
         }}
       >
         <div className="absolute inset-0 bg-black/50" />
@@ -104,16 +119,30 @@ const EventDetailPage = () => {
               {event.title}
             </h1>
             <div className="flex flex-wrap gap-4 items-center text-white">
-              <Badge className={`${getTypeBadgeColor(event.type)} text-base`}>
-                {getTypeLabel(event.type)}
+              <Badge className={`${getTypeBadgeColor(event.gender_type)} text-base`}>
+                {getTypeLabel(event.gender_type)}
               </Badge>
+              {event.nearest_datetime && (
+                <div className="flex items-center gap-2">
+                  <Icon name="Calendar" size={20} />
+                  <span>{formatDateTime(event.nearest_datetime)}</span>
+                </div>
+              )}
+              {event.bathhouse && (
+                <div className="flex items-center gap-2">
+                  <Icon name="MapPin" size={20} />
+                  <span>{event.bathhouse.name}</span>
+                </div>
+              )}
+              {event.city && !event.bathhouse && (
+                <div className="flex items-center gap-2">
+                  <Icon name="MapPin" size={20} />
+                  <span>{event.city}</span>
+                </div>
+              )}
               <div className="flex items-center gap-2">
-                <Icon name="Calendar" size={20} />
-                <span>{new Date(event.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })} в {event.time}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Icon name="MapPin" size={20} />
-                <span>{event.location}</span>
+                <Icon name="Clock" size={20} />
+                <span>{event.duration_minutes} минут</span>
               </div>
             </div>
           </div>
@@ -123,47 +152,109 @@ const EventDetailPage = () => {
       <div className="container mx-auto px-4 py-12">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-8">
-            <Card>
-              <CardHeader>
-                <CardTitle className="font-serif text-2xl">Описание</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground leading-relaxed">
-                  {event.description}
-                </p>
-              </CardContent>
-            </Card>
-
-            {event.program && event.program.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="font-serif text-2xl">Программа мероприятия</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ul className="space-y-3">
-                    {event.program.map((item, index) => (
-                      <li key={index} className="flex items-start gap-3">
-                        <div className="flex-shrink-0 w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center">
-                          <span className="text-xs font-bold text-primary">{index + 1}</span>
-                        </div>
-                        <span className="text-muted-foreground">{item}</span>
-                      </li>
+            <Tabs defaultValue="description">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="description">Описание</TabsTrigger>
+                <TabsTrigger value="program">Программа</TabsTrigger>
+                <TabsTrigger value="schedule">Расписание</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="description" className="mt-6">
+                <Card>
+                  <CardContent className="pt-6">
+                    <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                      {event.description}
+                    </p>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              
+              <TabsContent value="program" className="mt-6">
+                <Card>
+                  <CardContent className="pt-6">
+                    {event.program && Array.isArray(event.program) && event.program.length > 0 ? (
+                      <ul className="space-y-3">
+                        {event.program.map((item, index) => (
+                          <li key={index} className="flex items-start gap-3">
+                            <div className="flex-shrink-0 w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center">
+                              <span className="text-xs font-bold text-primary">{index + 1}</span>
+                            </div>
+                            <span className="text-muted-foreground">{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-muted-foreground text-center py-6">Программа мероприятия уточняется</p>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              
+              <TabsContent value="schedule" className="mt-6">
+                {schedulesLoading ? (
+                  <Card>
+                    <CardContent className="pt-6 text-center">
+                      <Icon name="Loader2" className="h-8 w-8 animate-spin mx-auto mb-2" />
+                      <p className="text-muted-foreground">Загрузка расписания...</p>
+                    </CardContent>
+                  </Card>
+                ) : schedules.length === 0 ? (
+                  <Card>
+                    <CardContent className="pt-6 text-center py-12">
+                      <Icon name="CalendarOff" className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+                      <p className="text-muted-foreground">Расписание пока не опубликовано</p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="space-y-4">
+                    {schedules.map((schedule) => (
+                      <Card key={schedule.id} className="hover:shadow-md transition-shadow">
+                        <CardContent className="pt-6">
+                          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2">
+                                <Icon name="Calendar" className="h-4 w-4 text-primary" />
+                                <span className="font-semibold">{formatDateTime(schedule.start_datetime)}</span>
+                              </div>
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <Icon name="Users" className="h-4 w-4" />
+                                <span>Свободно мест: {schedule.capacity_available} из {schedule.capacity_total}</span>
+                              </div>
+                              {schedule.price && (
+                                <div className="flex items-center gap-2">
+                                  <Icon name="Coins" className="h-4 w-4 text-primary" />
+                                  <span className="text-xl font-bold text-primary">{schedule.price} ₽</span>
+                                </div>
+                              )}
+                            </div>
+                            <Button 
+                              disabled={schedule.capacity_available === 0 || schedule.status !== 'active'}
+                              className="whitespace-nowrap"
+                            >
+                              {schedule.capacity_available === 0 ? 'Мест нет' : 'Записаться'}
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
                     ))}
-                  </ul>
-                </CardContent>
-              </Card>
-            )}
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
 
-            {event.rules && event.rules.length > 0 && (
+            {event.rules && Array.isArray(event.rules) && event.rules.length > 0 && (
               <Card>
                 <CardHeader>
-                  <CardTitle className="font-serif text-2xl">Правила участия</CardTitle>
+                  <CardTitle className="font-serif text-2xl flex items-center gap-2">
+                    <Icon name="AlertCircle" className="h-5 w-5" />
+                    Правила посещения
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ul className="space-y-3">
+                  <ul className="space-y-2">
                     {event.rules.map((rule, index) => (
-                      <li key={index} className="flex items-start gap-3">
-                        <Icon name="Check" size={20} className="text-primary flex-shrink-0 mt-0.5" />
+                      <li key={index} className="flex items-start gap-2">
+                        <Icon name="Check" className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
                         <span className="text-muted-foreground">{rule}</span>
                       </li>
                     ))}
@@ -173,95 +264,63 @@ const EventDetailPage = () => {
             )}
           </div>
 
-          <div className="lg:col-span-1">
-            <Card className="sticky top-24">
+          <div className="space-y-6">
+            <Card className="sticky top-4">
               <CardHeader>
-                <CardTitle className="font-serif text-2xl">Запись на событие</CardTitle>
-                <CardDescription>Заполните форму для бронирования</CardDescription>
+                <CardTitle className="font-serif text-2xl">Информация</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="bg-muted p-4 rounded-lg space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium">Стоимость:</span>
-                    <span className="text-2xl font-bold text-primary">{event.price} ₽</span>
-                  </div>
-                  <Separator />
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-muted-foreground">Всего мест:</span>
-                    <span>{event.totalSpots}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-muted-foreground">Свободно:</span>
-                    <span className="font-medium text-primary">{event.available_spots}</span>
-                  </div>
+                <div className="flex justify-between items-center pb-4 border-b">
+                  <span className="text-muted-foreground">Стоимость</span>
+                  <span className="text-3xl font-bold text-primary">{event.price} ₽</span>
                 </div>
 
-                <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button 
-                      className="w-full" 
-                      size="lg"
-                      disabled={event.available_spots === 0}
-                    >
-                      {event.available_spots > 0 ? 'Записаться на мероприятие' : 'Мест нет'}
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle className="font-serif text-2xl">{event.title}</DialogTitle>
-                      <DialogDescription>
-                        Заполните форму для записи на мероприятие
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                      <div>
-                        <Label htmlFor="name">Имя</Label>
-                        <Input 
-                          id="name" 
-                          value={bookingData.name}
-                          onChange={(e) => setBookingData({...bookingData, name: e.target.value})}
-                          placeholder="Ваше имя"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="phone">Телефон</Label>
-                        <Input 
-                          id="phone" 
-                          value={bookingData.phone}
-                          onChange={(e) => setBookingData({...bookingData, phone: e.target.value})}
-                          placeholder="+7 (999) 123-45-67"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="telegram">Telegram</Label>
-                        <Input 
-                          id="telegram" 
-                          value={bookingData.telegram}
-                          onChange={(e) => setBookingData({...bookingData, telegram: e.target.value})}
-                          placeholder="@username"
-                        />
-                      </div>
-                      <div className="bg-muted p-4 rounded-lg">
-                        <p className="text-sm font-medium mb-2">Детали бронирования:</p>
-                        <p className="text-sm text-muted-foreground">
-                          Дата: {new Date(event.date).toLocaleDateString('ru-RU')} в {event.time}<br/>
-                          Стоимость: {event.price} ₽
-                        </p>
-                      </div>
-                      <Button 
-                        onClick={submitBooking} 
-                        className="w-full"
-                        disabled={isSubmitting || !bookingData.name || !bookingData.phone}
-                      >
-                        {isSubmitting ? 'Отправка...' : 'Подтвердить запись'}
-                      </Button>
-                    </div>
-                  </DialogContent>
-                </Dialog>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Длительность</span>
+                  <span className="font-medium">{event.duration_minutes} минут</span>
+                </div>
 
-                <p className="text-xs text-muted-foreground text-center">
-                  После отправки заявки мы свяжемся с вами в Telegram
-                </p>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Свободных мест</span>
+                  <span className="font-medium">{event.available_spots}</span>
+                </div>
+
+                {event.schedules_count > 0 && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Доступных дат</span>
+                    <span className="font-medium">{event.schedules_count}</span>
+                  </div>
+                )}
+
+                {event.bathhouse && (
+                  <div className="pt-4 border-t space-y-2">
+                    <p className="text-sm font-semibold">Место проведения:</p>
+                    <div className="space-y-1">
+                      <p className="text-sm">{event.bathhouse.name}</p>
+                      <p className="text-xs text-muted-foreground">{event.bathhouse.address}</p>
+                    </div>
+                  </div>
+                )}
+
+                {event.master && (
+                  <div className="pt-4 border-t space-y-2">
+                    <p className="text-sm font-semibold">Мастер:</p>
+                    <div className="flex items-center gap-3">
+                      {event.master.avatar_url && (
+                        <img 
+                          src={event.master.avatar_url} 
+                          alt={event.master.name}
+                          className="w-12 h-12 rounded-full object-cover"
+                        />
+                      )}
+                      <p className="text-sm">{event.master.name}</p>
+                    </div>
+                  </div>
+                )}
+
+                <Button className="w-full mt-4" size="lg" disabled={event.available_spots === 0}>
+                  {event.available_spots > 0 ? 'Записаться на событие' : 'Мест нет'}
+                </Button>
               </CardContent>
             </Card>
           </div>

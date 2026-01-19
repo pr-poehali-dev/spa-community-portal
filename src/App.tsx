@@ -10,6 +10,7 @@ import { Layout } from "./components/Layout";
 const Home = lazy(() => import("./pages/Home"));
 const EventsListPage = lazy(() => import("./pages/EventsListPage"));
 const EventDetailPage = lazy(() => import("./pages/EventDetailPage"));
+const EventsCalendarPage = lazy(() => import("./pages/EventsCalendarPage"));
 const BathsListPage = lazy(() => import("./pages/BathsListPage"));
 const BathDetailPage = lazy(() => import("./pages/BathDetailPage"));
 const MastersListPage = lazy(() => import("./pages/MastersListPage"));
@@ -72,6 +73,7 @@ const App = () => (
               <Route path="/" element={<Layout><Home /></Layout>} />
               <Route path="/events" element={<Layout><EventsListPage /></Layout>} />
               <Route path="/events/:slug" element={<Layout><EventDetailPage /></Layout>} />
+              <Route path="/calendar" element={<Layout><EventsCalendarPage /></Layout>} />
               <Route path="/bany" element={<Layout><BathsListPage /></Layout>} />
               <Route path="/bany/:slug" element={<Layout><BathDetailPage /></Layout>} />
               <Route path="/masters" element={<Layout><MastersListPage /></Layout>} />

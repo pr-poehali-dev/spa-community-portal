@@ -45,6 +45,14 @@ export const Layout = ({ children }: LayoutProps) => {
                 События
               </Link>
               <Link
+                to="/calendar"
+                className={`text-sm md:text-base font-medium transition-colors ${
+                  isActive('/calendar') ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Календарь
+              </Link>
+              <Link
                 to="/bany"
                 className={`text-sm md:text-base font-medium transition-colors ${
                   isActive('/bany') ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
