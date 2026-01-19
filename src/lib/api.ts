@@ -103,7 +103,7 @@ export async function getEvents(filters?: {
 }
 
 export async function getEventBySlug(slug: string): Promise<Event | null> {
-  const response = await fetch(`${EVENTS_API_URL}/${slug}`);
+  const response = await fetch(`${EVENTS_API_URL}?slug=${slug}`);
   if (!response.ok) {
     if (response.status === 404) return null;
     throw new Error('Failed to fetch event');

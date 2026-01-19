@@ -330,24 +330,10 @@ def handler(event: dict, context) -> dict:
             'isBase64Encoded': False
         }
     
-    request_context = event.get('requestContext', {})
-    http_context = request_context.get('http', {})
-    path = http_context.get('path', event.get('url', ''))
-    
-    if not path:
-        path = event.get('params', {}).get('path', '')
-    
-    path_params = event.get('pathParams', {})
     query_params = event.get('queryStringParameters', {}) or {}
     
-    path_parts = [p for p in path.split('/') if p]
-    slug_or_id = path_parts[0] if len(path_parts) > 0 else ''
-    action = path_parts[1] if len(path_parts) > 1 else ''
-    
-    if not slug_or_id:
-        slug_or_id = path_params.get('slug', '') or path_params.get('id', '')
-    if not action:
-        action = path_params.get('action', '')
+    slug_or_id = query_params.get('slug', '') or query_params.get('id', '')
+    action = query_params.get('action', '')
     
     try:
         if method == 'GET':
