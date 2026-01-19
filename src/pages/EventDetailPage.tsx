@@ -280,16 +280,19 @@ const EventDetailPage = () => {
                   <span className="font-medium">{event.duration_minutes} минут</span>
                 </div>
 
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Свободных мест</span>
-                  <span className="font-medium">{event.available_spots}</span>
-                </div>
-
-                {event.schedules_count > 0 && (
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Доступных дат</span>
-                    <span className="font-medium">{event.schedules_count}</span>
-                  </div>
+                {schedules.length > 0 && (
+                  <>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Свободных мест</span>
+                      <span className="font-medium">
+                        {Math.max(...schedules.map(s => s.capacity_available))} из {Math.max(...schedules.map(s => s.capacity_total))}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Доступных дат</span>
+                      <span className="font-medium">{schedules.length}</span>
+                    </div>
+                  </>
                 )}
 
                 {event.bathhouse && (
@@ -318,8 +321,12 @@ const EventDetailPage = () => {
                   </div>
                 )}
 
-                <Button className="w-full mt-4" size="lg" disabled={event.available_spots === 0}>
-                  {event.available_spots > 0 ? 'Записаться на событие' : 'Мест нет'}
+                <Button 
+                  className="w-full mt-4" 
+                  size="lg" 
+                  disabled={schedules.length === 0 || schedules.every(s => s.capacity_available === 0)}
+                >
+                  {schedules.length > 0 && schedules.some(s => s.capacity_available > 0) ? 'Записаться на событие' : 'Мест нет'}
                 </Button>
               </CardContent>
             </Card>
