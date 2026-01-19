@@ -116,9 +116,13 @@ export async function getEventSchedules(eventId: string, params?: {
   date_to?: string;
   status?: string;
 }): Promise<{schedules: ServiceSchedule[]}> {
-  const queryParams = new URLSearchParams(params as Record<string, string>);
+  const queryParams = new URLSearchParams({
+    id: eventId,
+    action: 'schedule',
+    ...params
+  } as Record<string, string>);
   
-  const response = await fetch(`${EVENTS_API_URL}/${eventId}/schedule?${queryParams.toString()}`);
+  const response = await fetch(`${EVENTS_API_URL}?${queryParams.toString()}`);
   if (!response.ok) throw new Error('Failed to fetch event schedules');
   return response.json();
 }
