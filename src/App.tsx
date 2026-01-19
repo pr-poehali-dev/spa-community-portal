@@ -32,6 +32,7 @@ const AdminBookingsPage = lazy(() => import("./pages/admin/AdminBookingsPage"));
 const AdminSettingsPage = lazy(() => import("./pages/admin/AdminSettingsPage"));
 const AdminRoleApplicationsPage = lazy(() => import("./pages/admin/AdminRoleApplicationsPage"));
 const AdminBlogPage = lazy(() => import("./pages/admin/AdminBlogPage"));
+const AdminAnalyticsPage = lazy(() => import("./pages/admin/AdminAnalyticsPage"));
 const AdminLoginPage = lazy(() => import("./pages/AdminLoginPage"));
 const ApplyRolePage = lazy(() => import("./pages/ApplyRolePage"));
 const AccountPage = lazy(() => import("./pages/AccountPage"));
@@ -64,6 +65,7 @@ const App = () => (
                 <Route path="role-applications" element={<AdminRoleApplicationsPage />} />
                 <Route path="transactions" element={<AdminTransactionsPage />} />
                 <Route path="bookings" element={<AdminBookingsPage />} />
+                <Route path="analytics" element={<AdminAnalyticsPage />} />
                 <Route path="settings" element={<AdminSettingsPage />} />
               </Route>
 
