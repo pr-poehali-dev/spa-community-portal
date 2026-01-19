@@ -215,7 +215,7 @@ def get_event_detail(slug: str = None, event_id: str = None) -> Optional[dict]:
             m.specialization as master_specialization, m.experience as master_experience,
             m.rating as master_rating, m.reviews_count as master_reviews,
             u.id as organizer_id, u.name as organizer_name, u.email as organizer_email,
-            u.phone as organizer_phone, u.telegram_username as organizer_telegram
+            u.phone as organizer_phone, u.telegram as organizer_telegram
         FROM {SCHEMA}.services s
         LEFT JOIN {SCHEMA}.baths b ON s.bathhouse_id = b.id
         LEFT JOIN {SCHEMA}.masters m ON s.master_id = m.id
