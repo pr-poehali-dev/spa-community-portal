@@ -318,20 +318,33 @@ const EventDetailPage = () => {
 
                 {event.bathhouse && (
                   <div className="pt-4 border-t space-y-2">
-                    <p className="text-sm font-semibold">Место проведения:</p>
+                    <p className="text-sm font-semibold flex items-center gap-2">
+                      <Icon name="Home" className="h-4 w-4 text-primary" />
+                      Баня
+                    </p>
                     <div className="space-y-1">
-                      <p className="text-sm">{event.bathhouse.name}</p>
+                      <p className="text-sm font-medium">{event.bathhouse.name}</p>
                       <p className="text-xs text-muted-foreground flex items-start gap-1">
                         <Icon name="MapPin" className="h-3 w-3 mt-0.5 flex-shrink-0" />
                         {event.bathhouse.address}
                       </p>
+                      {event.bathhouse.rating && event.bathhouse.rating > 0 && (
+                        <div className="flex items-center gap-1 text-xs">
+                          <Icon name="Star" className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                          <span className="font-medium">{event.bathhouse.rating.toFixed(1)}</span>
+                          <span className="text-muted-foreground">({event.bathhouse.reviews_count} отзывов)</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
 
                 {event.master && (
                   <div className="pt-4 border-t space-y-2">
-                    <p className="text-sm font-semibold">Мастер:</p>
+                    <p className="text-sm font-semibold flex items-center gap-2">
+                      <Icon name="User" className="h-4 w-4 text-primary" />
+                      Мастер
+                    </p>
                     <div className="flex items-center gap-3">
                       {event.master.avatar_url && (
                         <img 
@@ -340,7 +353,50 @@ const EventDetailPage = () => {
                           className="w-12 h-12 rounded-full object-cover"
                         />
                       )}
-                      <p className="text-sm">{event.master.name}</p>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">{event.master.name}</p>
+                        {event.master.specialization && (
+                          <p className="text-xs text-muted-foreground">{event.master.specialization}</p>
+                        )}
+                        {event.master.rating && event.master.rating > 0 && (
+                          <div className="flex items-center gap-1 text-xs mt-1">
+                            <Icon name="Star" className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                            <span className="font-medium">{event.master.rating.toFixed(1)}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {event.organizer && (
+                  <div className="pt-4 border-t space-y-2">
+                    <p className="text-sm font-semibold flex items-center gap-2">
+                      <Icon name="UserCircle" className="h-4 w-4 text-primary" />
+                      Организатор
+                    </p>
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium">{event.organizer.name}</p>
+                      {event.organizer.phone && (
+                        <a 
+                          href={`tel:${event.organizer.phone}`}
+                          className="text-xs text-primary hover:underline flex items-center gap-1"
+                        >
+                          <Icon name="Phone" className="h-3 w-3" />
+                          {event.organizer.phone}
+                        </a>
+                      )}
+                      {event.organizer.telegram && (
+                        <a 
+                          href={`https://t.me/${event.organizer.telegram.replace('@', '')}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-primary hover:underline flex items-center gap-1"
+                        >
+                          <Icon name="Send" className="h-3 w-3" />
+                          @{event.organizer.telegram.replace('@', '')}
+                        </a>
+                      )}
                     </div>
                   </div>
                 )}

@@ -213,10 +213,13 @@ def get_event_detail(slug: str = None, event_id: str = None) -> Optional[dict]:
             b.rating as bathhouse_rating, b.reviews_count as bathhouse_reviews,
             m.id as master_id, m.name as master_name, m.avatar_url as master_avatar,
             m.specialization as master_specialization, m.experience as master_experience,
-            m.rating as master_rating, m.reviews_count as master_reviews
+            m.rating as master_rating, m.reviews_count as master_reviews,
+            u.id as organizer_id, u.name as organizer_name, u.email as organizer_email,
+            u.phone as organizer_phone, u.telegram_username as organizer_telegram
         FROM {SCHEMA}.services s
         LEFT JOIN {SCHEMA}.baths b ON s.bathhouse_id = b.id
         LEFT JOIN {SCHEMA}.masters m ON s.master_id = m.id
+        LEFT JOIN {SCHEMA}.users u ON s.organizer_id = u.id
         WHERE {where_clause}
     """, (param,))
     
@@ -257,7 +260,14 @@ def get_event_detail(slug: str = None, event_id: str = None) -> Optional[dict]:
             'experience': row[23],
             'rating': float(row[24]) if row[24] else 0,
             'reviews_count': row[25] or 0
-        } if row[19] else None
+        } if row[19] else None,
+        'organizer': {
+            'id': row[26],
+            'name': row[27],
+            'email': row[28],
+            'phone': row[29],
+            'telegram': row[30]
+        } if row[26] else None
     }
     
     cur.close()

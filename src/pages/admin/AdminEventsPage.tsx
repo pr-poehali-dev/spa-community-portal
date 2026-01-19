@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { DialogTrigger } from '@/components/ui/dialog';
 import Icon from '@/components/ui/icon';
 import { useToast } from '@/hooks/use-toast';
 import { adminApi } from '@/lib/adminApi';
@@ -161,15 +160,13 @@ const AdminEventsPage = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-3xl font-bold text-orange-900">Управление событиями</h2>
-        <DialogTrigger asChild>
-          <Button 
-            className="bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700"
-            onClick={() => setIsCreateDialogOpen(true)}
-          >
-            <Icon name="Plus" className="h-4 w-4 mr-2" />
-            Создать событие
-          </Button>
-        </DialogTrigger>
+        <Button 
+          className="bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700"
+          onClick={() => setIsCreateDialogOpen(true)}
+        >
+          <Icon name="Plus" className="h-4 w-4 mr-2" />
+          Создать событие
+        </Button>
       </div>
 
       <EventFormDialog

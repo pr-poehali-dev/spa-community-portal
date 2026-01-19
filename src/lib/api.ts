@@ -19,11 +19,25 @@ export interface Event {
     id: number;
     name: string;
     address: string;
+    description?: string;
+    rating?: number;
+    reviews_count?: number;
   };
   master?: {
     id: number;
     name: string;
     avatar_url: string;
+    specialization?: string;
+    experience?: number;
+    rating?: number;
+    reviews_count?: number;
+  };
+  organizer?: {
+    id: number;
+    name: string;
+    email?: string;
+    phone?: string;
+    telegram?: string;
   };
   schedules_count: number;
   nearest_datetime?: string;
