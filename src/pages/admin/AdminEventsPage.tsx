@@ -44,6 +44,8 @@ const AdminEventsPage = () => {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingEventId, setEditingEventId] = useState<number | null>(null);
   const [formData, setFormData] = useState({
     slug: '',
     title: '',
@@ -101,6 +103,56 @@ const AdminEventsPage = () => {
       toast({
         title: 'Ошибка',
         description: 'Не удалось создать событие',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleEditEvent = (event: Event) => {
+    setEditingEventId(event.id);
+    setFormData({
+      slug: event.slug,
+      title: event.title,
+      description: event.description,
+      date: event.date,
+      time: event.time,
+      location: event.location,
+      type: event.type,
+      total_spots: event.total_spots,
+      price: event.price,
+      image_url: event.image_url || '',
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdateEvent = async () => {
+    if (!editingEventId) return;
+    
+    try {
+      await adminApi.events.update(editingEventId, formData);
+      toast({
+        title: 'Событие обновлено',
+        description: 'Изменения успешно сохранены',
+      });
+      setIsEditDialogOpen(false);
+      setEditingEventId(null);
+      setFormData({
+        slug: '',
+        title: '',
+        description: '',
+        date: '',
+        time: '14:00',
+        location: '',
+        type: 'mixed',
+        total_spots: 10,
+        price: 1500,
+        image_url: '',
+      });
+      loadEvents();
+    } catch (error) {
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось обновить событие',
         variant: 'destructive',
       });
     }
@@ -273,6 +325,129 @@ const AdminEventsPage = () => {
         </Dialog>
       </div>
 
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Редактировать событие</DialogTitle>
+            <DialogDescription>
+              Измените информацию о событии
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="edit-title">Название события</Label>
+              <Input
+                id="edit-title"
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                placeholder="Фестиваль банной культуры"
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-slug">Slug (URL)</Label>
+              <Input
+                id="edit-slug"
+                value={formData.slug}
+                onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+                placeholder="festival-bannoy-kultury"
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-description">Описание</Label>
+              <Textarea
+                id="edit-description"
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                placeholder="Подробное описание события..."
+                rows={4}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="edit-date">Дата</Label>
+                <Input
+                  id="edit-date"
+                  type="date"
+                  value={formData.date}
+                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-time">Время</Label>
+                <Input
+                  id="edit-time"
+                  type="time"
+                  value={formData.time}
+                  onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+                />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="edit-location">Локация</Label>
+              <Input
+                id="edit-location"
+                value={formData.location}
+                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                placeholder="Москва, Банная ул., 1"
+              />
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <Label htmlFor="edit-type">Тип</Label>
+                <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="men">Мужское</SelectItem>
+                    <SelectItem value="women">Женское</SelectItem>
+                    <SelectItem value="mixed">Смешанное</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="edit-total_spots">Макс. мест</Label>
+                <Input
+                  id="edit-total_spots"
+                  type="number"
+                  value={formData.total_spots}
+                  onChange={(e) => setFormData({ ...formData, total_spots: parseInt(e.target.value) })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-price">Цена, ₽</Label>
+                <Input
+                  id="edit-price"
+                  type="number"
+                  value={formData.price}
+                  onChange={(e) => setFormData({ ...formData, price: parseInt(e.target.value) })}
+                />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="edit-image_url">URL изображения</Label>
+              <Input
+                id="edit-image_url"
+                value={formData.image_url}
+                onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
+                placeholder="https://..."
+              />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                Отмена
+              </Button>
+              <Button
+                onClick={handleUpdateEvent}
+                className="bg-gradient-to-r from-orange-500 to-amber-600"
+              >
+                Сохранить
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <div className="grid grid-cols-1 gap-4">
         {events.map((event) => (
           <Card key={event.id} className="border-orange-100 shadow-sm">
@@ -311,6 +486,13 @@ const AdminEventsPage = () => {
                     onClick={() => window.open(`/events/${event.slug}`, '_blank')}
                   >
                     <Icon name="Eye" className="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="icon"
+                    onClick={() => handleEditEvent(event)}
+                  >
+                    <Icon name="Pencil" className="h-4 w-4" />
                   </Button>
                   <Button 
                     variant="outline" 
