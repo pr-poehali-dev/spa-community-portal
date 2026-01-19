@@ -92,10 +92,8 @@ const Home = () => {
                 </div>
                 <CardTitle className="font-serif text-xl mb-2">Доступность</CardTitle>
               </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">
-                  Шеринг аренды. Делим стоимость аренды на компанию — баня становится доступной каждому
-                </p>
+              <CardContent className="text-muted-foreground">
+                Шеринг аренды. Делим стоимость аренды на компанию — баня становится доступной каждому
               </CardContent>
             </Card>
 
@@ -106,10 +104,8 @@ const Home = () => {
                 </div>
                 <CardTitle className="font-serif text-xl mb-2">Сообщество</CardTitle>
               </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">
-                  Тёплый круг. Знакомься с интересными людьми, разделяющими любовь к банным традициям
-                </p>
+              <CardContent className="text-muted-foreground">
+                Тёплый круг. Знакомься с интересными людьми, разделяющими любовь к банным традициям
               </CardContent>
             </Card>
 
@@ -120,10 +116,8 @@ const Home = () => {
                 </div>
                 <CardTitle className="font-serif text-xl mb-2">Экспертиза</CardTitle>
               </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">
-                  Мастера и ритуалы. Парься с лучшими пармастерами Москвы, обучайся традициям
-                </p>
+              <CardContent className="text-muted-foreground">
+                Мастера и ритуалы. Парься с лучшими пармастерами Москвы, обучайся традициям
               </CardContent>
             </Card>
 
@@ -134,10 +128,8 @@ const Home = () => {
                 </div>
                 <CardTitle className="font-serif text-xl mb-2">Удобство</CardTitle>
               </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">
-                  Всё в одном месте. Выбирай баню, записывайся на события, общайся — всё онлайн
-                </p>
+              <CardContent className="text-muted-foreground">
+                Всё в одном месте. Выбирай баню, записывайся на события, общайся — всё онлайн
               </CardContent>
             </Card>
           </div>
