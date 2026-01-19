@@ -16,10 +16,14 @@ interface Event {
   available_spots: number;
   total_spots: number;
   image_url?: string;
+  bathhouse_id?: number | null;
+  master_id?: number | null;
 }
 
 interface EventCardProps {
   event: Event;
+  bathName?: string;
+  masterName?: string;
   onEdit: (event: Event) => void;
   onDelete: (id: number) => void;
 }
@@ -34,7 +38,7 @@ const getTypeBadge = (type: string) => {
   return <Badge variant={typeConfig.variant}>{typeConfig.label}</Badge>;
 };
 
-const EventCard = ({ event, onEdit, onDelete }: EventCardProps) => {
+const EventCard = ({ event, bathName, masterName, onEdit, onDelete }: EventCardProps) => {
   return (
     <Card className="border-orange-100 shadow-sm">
       <CardContent className="p-6">
@@ -53,6 +57,18 @@ const EventCard = ({ event, onEdit, onDelete }: EventCardProps) => {
                 <Icon name="MapPin" className="h-4 w-4" />
                 <span>{event.location}</span>
               </div>
+              {bathName && (
+                <div className="flex items-center gap-2">
+                  <Icon name="Home" className="h-4 w-4 text-primary" />
+                  <span className="text-primary font-medium">{bathName}</span>
+                </div>
+              )}
+              {masterName && (
+                <div className="flex items-center gap-2">
+                  <Icon name="User" className="h-4 w-4 text-primary" />
+                  <span className="text-primary font-medium">{masterName}</span>
+                </div>
+              )}
               <div className="flex items-center gap-2">
                 <Icon name="Users" className="h-4 w-4" />
                 <span>

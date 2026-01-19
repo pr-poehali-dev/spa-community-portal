@@ -23,9 +23,21 @@ interface Event {
   master_id?: number | null;
 }
 
+interface Bath {
+  id: number;
+  name: string;
+}
+
+interface Master {
+  id: number;
+  name: string;
+}
+
 const AdminEventsPage = () => {
   const { toast } = useToast();
   const [events, setEvents] = useState<Event[]>([]);
+  const [baths, setBaths] = useState<Bath[]>([]);
+  const [masters, setMasters] = useState<Master[]>([]);
   const [loading, setLoading] = useState(true);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -46,8 +58,29 @@ const AdminEventsPage = () => {
   });
 
   useEffect(() => {
-    loadEvents();
+    loadData();
   }, []);
+
+  const loadData = async () => {
+    try {
+      const [eventsData, bathsData, mastersData] = await Promise.all([
+        adminApi.events.getAll(),
+        adminApi.saunas.getAll(),
+        adminApi.masters.getAll()
+      ]);
+      setEvents(eventsData);
+      setBaths(bathsData);
+      setMasters(mastersData);
+    } catch (error) {
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось загрузить данные',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const loadEvents = async () => {
     try {
@@ -59,8 +92,6 @@ const AdminEventsPage = () => {
         description: 'Не удалось загрузить события',
         variant: 'destructive',
       });
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -196,14 +227,21 @@ const AdminEventsPage = () => {
       />
 
       <div className="grid grid-cols-1 gap-4">
-        {events.map((event) => (
-          <EventCard
-            key={event.id}
-            event={event}
-            onEdit={handleEditEvent}
-            onDelete={handleDeleteEvent}
-          />
-        ))}
+        {events.map((event) => {
+          const bathName = event.bathhouse_id ? baths.find(b => b.id === event.bathhouse_id)?.name : undefined;
+          const masterName = event.master_id ? masters.find(m => m.id === event.master_id)?.name : undefined;
+          
+          return (
+            <EventCard
+              key={event.id}
+              event={event}
+              bathName={bathName}
+              masterName={masterName}
+              onEdit={handleEditEvent}
+              onDelete={handleDeleteEvent}
+            />
+          );
+        })}
       </div>
     </div>
   );
