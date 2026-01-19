@@ -30,9 +30,9 @@ const Home = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const filterType = eventFilter === 'all' ? '' : eventFilter;
-    getEvents(filterType)
-      .then(data => setEvents(data))
+    const filters = eventFilter === 'all' ? {} : { gender_type: eventFilter };
+    getEvents(filters)
+      .then(data => setEvents(data.items))
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [eventFilter]);
