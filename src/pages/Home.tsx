@@ -8,8 +8,8 @@ import { getEvents, Event } from '@/lib/api';
 
 const getTypeLabel = (type: string) => {
   switch(type) {
-    case 'men': return 'Мужской';
-    case 'women': return 'Женский';
+    case 'male': return 'Мужской';
+    case 'female': return 'Женский';
     case 'mixed': return 'Совместный';
     default: return '';
   }
@@ -17,8 +17,8 @@ const getTypeLabel = (type: string) => {
 
 const getTypeBadgeColor = (type: string) => {
   switch(type) {
-    case 'men': return 'bg-blue-100 text-blue-800 hover:bg-blue-200';
-    case 'women': return 'bg-pink-100 text-pink-800 hover:bg-pink-200';
+    case 'male': return 'bg-blue-100 text-blue-800 hover:bg-blue-200';
+    case 'female': return 'bg-pink-100 text-pink-800 hover:bg-pink-200';
     case 'mixed': return 'bg-purple-100 text-purple-800 hover:bg-purple-200';
     default: return '';
   }
@@ -26,7 +26,7 @@ const getTypeBadgeColor = (type: string) => {
 
 const Home = () => {
   const [events, setEvents] = useState<Event[]>([]);
-  const [eventFilter, setEventFilter] = useState<'all' | 'men' | 'women' | 'mixed'>('all');
+  const [eventFilter, setEventFilter] = useState<'all' | 'male' | 'female' | 'mixed'>('all');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -161,14 +161,14 @@ const Home = () => {
               Все события
             </Button>
             <Button 
-              variant={eventFilter === 'men' ? 'default' : 'outline'}
-              onClick={() => setEventFilter('men')}
+              variant={eventFilter === 'male' ? 'default' : 'outline'}
+              onClick={() => setEventFilter('male')}
             >
               Мужские
             </Button>
             <Button 
-              variant={eventFilter === 'women' ? 'default' : 'outline'}
-              onClick={() => setEventFilter('women')}
+              variant={eventFilter === 'female' ? 'default' : 'outline'}
+              onClick={() => setEventFilter('female')}
             >
               Женские
             </Button>
@@ -195,10 +195,10 @@ const Home = () => {
                   <Link to={`/events/${event.slug}`}>
                     <div 
                       className="h-56 bg-cover bg-center relative"
-                      style={{ backgroundImage: `url(${event.image_url})` }}
+                      style={{ backgroundImage: `url(${event.image_url || 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=800'})` }}
                     >
-                      <Badge className={`absolute top-4 right-4 ${getTypeBadgeColor(event.type)}`}>
-                        {getTypeLabel(event.type)}
+                      <Badge className={`absolute top-4 right-4 ${getTypeBadgeColor(event.gender_type)}`}>
+                        {getTypeLabel(event.gender_type)}
                       </Badge>
                     </div>
                   </Link>
@@ -210,14 +210,18 @@ const Home = () => {
                     </Link>
                     <CardDescription>
                       <div className="space-y-2 mt-3">
-                        <div className="flex items-center gap-2 text-sm">
-                          <Icon name="Calendar" size={16} />
-                          <span>{new Date(event.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })} в {event.time}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm">
-                          <Icon name="MapPin" size={16} />
-                          <span>{event.location}</span>
-                        </div>
+                        {event.nearest_datetime && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <Icon name="Calendar" size={16} />
+                            <span>{new Date(event.nearest_datetime).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}</span>
+                          </div>
+                        )}
+                        {event.bathhouse && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <Icon name="MapPin" size={16} />
+                            <span>{event.bathhouse.name}</span>
+                          </div>
+                        )}
                       </div>
                     </CardDescription>
                   </CardHeader>
@@ -226,11 +230,11 @@ const Home = () => {
                       <div>
                         <p className="text-3xl font-bold text-primary">{event.price} ₽</p>
                         <p className="text-sm text-muted-foreground mt-1">
-                          Осталось {event.available_spots} из {event.total_spots} мест
+                          {event.available_spots > 0 ? `Осталось ${event.available_spots} мест` : 'Мест нет'}
                         </p>
                       </div>
                       <Link to={`/events/${event.slug}`}>
-                        <Button>Записаться</Button>
+                        <Button>Подробнее</Button>
                       </Link>
                     </div>
                   </CardContent>

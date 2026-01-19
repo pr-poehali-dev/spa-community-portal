@@ -161,9 +161,8 @@ export const Layout = ({ children }: LayoutProps) => {
               <h4 className="font-semibold mb-4">Информация</h4>
               <ul className="space-y-2 text-sm">
                 <li><Link to="/about" className="text-muted-foreground hover:text-primary transition-colors">О нас</Link></li>
-                <li><Link to="/about/rules" className="text-muted-foreground hover:text-primary transition-colors">Правила</Link></li>
-                <li><Link to="/about/faq" className="text-muted-foreground hover:text-primary transition-colors">FAQ</Link></li>
-                <li><Link to="/about/contacts" className="text-muted-foreground hover:text-primary transition-colors">Контакты</Link></li>
+                <li><Link to="/calendar" className="text-muted-foreground hover:text-primary transition-colors">Календарь</Link></li>
+                <li><a href="https://t.me/sparkomrf" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors">Телеграм</a></li>
               </ul>
             </div>
             
@@ -189,8 +188,7 @@ export const Layout = ({ children }: LayoutProps) => {
           <div className="pt-6 border-t border-border flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-sm text-muted-foreground">© 2026 спарком.рф — Банное сообщество Москвы</p>
             <div className="flex gap-4 text-sm">
-              <Link to="/privacy" className="text-muted-foreground hover:text-primary transition-colors">Политика конфиденциальности</Link>
-              <Link to="/terms" className="text-muted-foreground hover:text-primary transition-colors">Пользовательское соглашение</Link>
+              <Link to="/about" className="text-muted-foreground hover:text-primary transition-colors">О проекте</Link>
             </div>
           </div>
         </div>
