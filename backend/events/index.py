@@ -330,18 +330,35 @@ def handler(event: dict, context) -> dict:
             'isBase64Encoded': False
         }
     
+    request_context = event.get('requestContext', {})
+    http_context = request_context.get('http', {})
+    path = http_context.get('path', event.get('url', ''))
+    
+    if not path:
+        path = event.get('params', {}).get('path', '')
+    
     path_params = event.get('pathParams', {})
-    query_params = event.get('queryStringParameters', {})
+    query_params = event.get('queryStringParameters', {}) or {}
+    
+    path_parts = [p for p in path.split('/') if p]
+    slug_or_id = path_parts[0] if len(path_parts) > 0 else ''
+    action = path_parts[1] if len(path_parts) > 1 else ''
+    
+    if not slug_or_id:
+        slug_or_id = path_params.get('slug', '') or path_params.get('id', '')
+    if not action:
+        action = path_params.get('action', '')
     
     try:
         if method == 'GET':
-            action = path_params.get('action', '')
-            event_id = path_params.get('id', '')
-            
-            if event_id and action == 'schedule':
-                result = get_event_schedules(event_id, query_params)
-            elif event_id:
-                result = get_event_detail(event_id=event_id)
+            if slug_or_id and action == 'schedule':
+                result = get_event_schedules(slug_or_id, query_params)
+            elif slug_or_id:
+                if slug_or_id.isdigit():
+                    result = get_event_detail(event_id=slug_or_id)
+                else:
+                    result = get_event_detail(slug=slug_or_id)
+                    
                 if not result:
                     return {
                         'statusCode': 404,
