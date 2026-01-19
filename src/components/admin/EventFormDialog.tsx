@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -28,6 +29,8 @@ interface EventFormData {
   total_spots: number;
   price: number;
   image_url: string;
+  bathhouse_id?: number | null;
+  master_id?: number | null;
 }
 
 interface EventFormDialogProps {
@@ -39,6 +42,19 @@ interface EventFormDialogProps {
   onSubmit: () => void;
 }
 
+interface Bath {
+  id: number;
+  name: string;
+  slug: string;
+}
+
+interface Master {
+  id: number;
+  name: string;
+  slug: string;
+  specialization: string;
+}
+
 const EventFormDialog = ({
   isOpen,
   onOpenChange,
@@ -48,6 +64,35 @@ const EventFormDialog = ({
   onSubmit,
 }: EventFormDialogProps) => {
   const isEdit = mode === 'edit';
+  const [baths, setBaths] = useState<Bath[]>([]);
+  const [masters, setMasters] = useState<Master[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (isOpen) {
+      loadBathsAndMasters();
+    }
+  }, [isOpen]);
+
+  const loadBathsAndMasters = async () => {
+    try {
+      const [bathsRes, mastersRes] = await Promise.all([
+        fetch('https://functions.poehali.dev/39080c98-5026-4698-87c0-7b06c8c541c8?resource=baths'),
+        fetch('https://functions.poehali.dev/39080c98-5026-4698-87c0-7b06c8c541c8?resource=masters')
+      ]);
+      
+      if (bathsRes.ok && mastersRes.ok) {
+        const bathsData = await bathsRes.json();
+        const mastersData = await mastersRes.json();
+        setBaths(bathsData);
+        setMasters(mastersData);
+      }
+    } catch (error) {
+      console.error('Failed to load baths and masters:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -157,6 +202,46 @@ const EventFormDialog = ({
               onChange={(e) => onFormDataChange({ ...formData, image_url: e.target.value })}
               placeholder="https://..."
             />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor={`${mode}-bathhouse`}>Баня</Label>
+              <Select 
+                value={formData.bathhouse_id?.toString() || ''} 
+                onValueChange={(value) => onFormDataChange({ ...formData, bathhouse_id: value ? parseInt(value) : null })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Выберите баню" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Не выбрана</SelectItem>
+                  {baths.map((bath) => (
+                    <SelectItem key={bath.id} value={bath.id.toString()}>
+                      {bath.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor={`${mode}-master`}>Мастер</Label>
+              <Select 
+                value={formData.master_id?.toString() || ''} 
+                onValueChange={(value) => onFormDataChange({ ...formData, master_id: value ? parseInt(value) : null })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Выберите мастера" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Не выбран</SelectItem>
+                  {masters.map((master) => (
+                    <SelectItem key={master.id} value={master.id.toString()}>
+                      {master.name} — {master.specialization}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <div className="flex gap-2 justify-end">
             <Button variant="outline" onClick={() => onOpenChange(false)}>

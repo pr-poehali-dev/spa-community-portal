@@ -19,6 +19,8 @@ interface Event {
   available_spots: number;
   total_spots: number;
   image_url?: string;
+  bathhouse_id?: number | null;
+  master_id?: number | null;
 }
 
 const AdminEventsPage = () => {
@@ -39,6 +41,8 @@ const AdminEventsPage = () => {
     total_spots: 10,
     price: 1500,
     image_url: '',
+    bathhouse_id: null as number | null,
+    master_id: null as number | null,
   });
 
   useEffect(() => {
@@ -72,6 +76,8 @@ const AdminEventsPage = () => {
       total_spots: 10,
       price: 1500,
       image_url: '',
+      bathhouse_id: null,
+      master_id: null,
     });
   };
 
@@ -107,6 +113,8 @@ const AdminEventsPage = () => {
       total_spots: event.total_spots,
       price: event.price,
       image_url: event.image_url || '',
+      bathhouse_id: event.bathhouse_id || null,
+      master_id: event.master_id || null,
     });
     setIsEditDialogOpen(true);
   };

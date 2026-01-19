@@ -150,13 +150,13 @@ def create_event(conn, data):
     cursor = conn.cursor()
     cursor.execute(
         """INSERT INTO t_p13705114_spa_community_portal.events (slug, title, description, date, time, location, type, 
-           price, available_spots, total_spots, image_url, program, rules)
-           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id""",
+           price, available_spots, total_spots, image_url, program, rules, bathhouse_id, master_id)
+           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id""",
         (data.get('slug'), data.get('title'), data.get('description'),
          data.get('date'), data.get('time'), data.get('location'), data.get('type'),
          data.get('price'), data.get('total_spots'), data.get('total_spots'),
          data.get('image_url'), json.dumps(data.get('program', [])),
-         json.dumps(data.get('rules', [])))
+         json.dumps(data.get('rules', [])), data.get('bathhouse_id'), data.get('master_id'))
     )
     event_id = cursor.fetchone()['id']
     conn.commit()
@@ -167,12 +167,12 @@ def update_event(conn, event_id, data):
     cursor = conn.cursor()
     cursor.execute(
         """UPDATE t_p13705114_spa_community_portal.events SET title=%s, description=%s, date=%s, time=%s, location=%s,
-           type=%s, price=%s, total_spots=%s, image_url=%s, program=%s, rules=%s,
+           type=%s, price=%s, total_spots=%s, image_url=%s, program=%s, rules=%s, bathhouse_id=%s, master_id=%s,
            updated_at=CURRENT_TIMESTAMP WHERE id=%s""",
         (data.get('title'), data.get('description'), data.get('date'), data.get('time'),
          data.get('location'), data.get('type'), data.get('price'), data.get('total_spots'),
          data.get('image_url'), json.dumps(data.get('program', [])),
-         json.dumps(data.get('rules', [])), event_id)
+         json.dumps(data.get('rules', [])), data.get('bathhouse_id'), data.get('master_id'), event_id)
     )
     conn.commit()
     cursor.close()
