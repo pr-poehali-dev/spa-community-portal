@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Navigate, Link } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -27,6 +28,7 @@ const getTypeBadgeColor = (type: string) => {
 
 const EventDetailPage = () => {
   const { slug } = useParams();
+  const { user } = useAuth();
   const [event, setEvent] = useState<Event | null>(null);
   const [schedules, setSchedules] = useState<ServiceSchedule[]>([]);
   const [loading, setLoading] = useState(true);
@@ -383,25 +385,37 @@ const EventDetailPage = () => {
                     </p>
                     <div className="space-y-1">
                       <p className="text-sm font-medium">{event.organizer.name}</p>
-                      {event.organizer.phone && (
-                        <a 
-                          href={`tel:${event.organizer.phone}`}
+                      {user ? (
+                        <>
+                          {event.organizer.phone && (
+                            <a 
+                              href={`tel:${event.organizer.phone}`}
+                              className="text-xs text-primary hover:underline flex items-center gap-1"
+                            >
+                              <Icon name="Phone" className="h-3 w-3" />
+                              {event.organizer.phone}
+                            </a>
+                          )}
+                          {event.organizer.telegram && (
+                            <a 
+                              href={`https://t.me/${event.organizer.telegram.replace('@', '')}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-primary hover:underline flex items-center gap-1"
+                            >
+                              <Icon name="Send" className="h-3 w-3" />
+                              @{event.organizer.telegram.replace('@', '')}
+                            </a>
+                          )}
+                        </>
+                      ) : (
+                        <Link 
+                          to="/login"
                           className="text-xs text-primary hover:underline flex items-center gap-1"
                         >
-                          <Icon name="Phone" className="h-3 w-3" />
-                          {event.organizer.phone}
-                        </a>
-                      )}
-                      {event.organizer.telegram && (
-                        <a 
-                          href={`https://t.me/${event.organizer.telegram.replace('@', '')}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-primary hover:underline flex items-center gap-1"
-                        >
-                          <Icon name="Send" className="h-3 w-3" />
-                          @{event.organizer.telegram.replace('@', '')}
-                        </a>
+                          <Icon name="Lock" className="h-3 w-3" />
+                          Войдите, чтобы увидеть контакты
+                        </Link>
                       )}
                     </div>
                   </div>
