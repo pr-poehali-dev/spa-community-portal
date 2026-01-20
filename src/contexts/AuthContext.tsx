@@ -86,24 +86,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
       }
 
-      // Старый способ проверки через API для email-авторизации
-      const response = await fetch(AUTH_API_URL, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${storedToken}`
+      // Для email-авторизации пробуем декодировать access_token
+      try {
+        const payload = JSON.parse(atob(storedToken.split('.')[1]));
+        if (payload.exp && payload.exp * 1000 > Date.now() && payload.user_id && payload.email) {
+          // Токен валиден, создаём объект user из payload
+          setUser({
+            id: payload.user_id,
+            email: payload.email,
+            name: '', // Имя не хранится в токене
+            role: 'participant' as any
+          });
+          setToken(storedToken);
+          setLoading(false);
+          return;
         }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setUser(data.user);
-        setToken(storedToken);
-      } else {
-        Cookies.remove('auth_token');
-        localStorage.removeItem('auth_token');
-        setToken(null);
-        setUser(null);
+      } catch (e) {
+        console.log('[AuthContext] Не удалось декодировать токен:', e);
       }
+      
+      // Токен невалиден
+      Cookies.remove('auth_token');
+      Cookies.remove('refresh_token');
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('refresh_token');
+      setToken(null);
+      setUser(null);
     } catch (error) {
       console.error('Ошибка проверки авторизации:', error);
       Cookies.remove('auth_token');
@@ -168,10 +176,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       const data = await response.json();
-      // Сохраняем токен в cookies на 30 дней
-      Cookies.set('auth_token', data.token, { expires: 30, sameSite: 'lax' });
-      localStorage.setItem('auth_token', data.token);
-      setToken(data.token);
+      // Сохраняем токены в cookies на 30 дней
+      Cookies.set('auth_token', data.access_token, { expires: 30, sameSite: 'lax' });
+      Cookies.set('refresh_token', data.refresh_token, { expires: 30, sameSite: 'lax' });
+      localStorage.setItem('auth_token', data.access_token);
+      localStorage.setItem('refresh_token', data.refresh_token);
+      setToken(data.access_token);
       setUser(data.user);
     } catch (error) {
       throw error;
@@ -194,8 +204,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.error('Ошибка при выходе:', error);
     } finally {
       Cookies.remove('auth_token');
+      Cookies.remove('refresh_token');
       Cookies.remove('telegram_user');
       localStorage.removeItem('auth_token');
+      localStorage.removeItem('refresh_token');
       localStorage.removeItem('telegram_user');
       localStorage.removeItem('telegram_auth_refresh_token');
       setToken(null);
