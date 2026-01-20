@@ -41,13 +41,25 @@ def send_email(to_email: str, subject: str, html_body: str, text_body: str) -> b
 
     try:
         print("[EMAIL] Connecting to SMTP server...")
-        with smtplib.SMTP(smtp_host, smtp_port, timeout=10) as server:
-            print("[EMAIL] Starting TLS...")
-            server.starttls()
-            print("[EMAIL] Logging in...")
-            server.login(smtp_user, smtp_password)
-            print("[EMAIL] Sending message...")
-            server.sendmail(smtp_from, to_email, msg.as_string())
+        
+        # Use SMTP_SSL for port 465, SMTP+starttls for port 587
+        if smtp_port == 465:
+            print("[EMAIL] Using SMTP_SSL (port 465)...")
+            with smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=10) as server:
+                print("[EMAIL] Logging in...")
+                server.login(smtp_user, smtp_password)
+                print("[EMAIL] Sending message...")
+                server.sendmail(smtp_from, to_email, msg.as_string())
+        else:
+            print("[EMAIL] Using SMTP+STARTTLS (port 587)...")
+            with smtplib.SMTP(smtp_host, smtp_port, timeout=10) as server:
+                print("[EMAIL] Starting TLS...")
+                server.starttls()
+                print("[EMAIL] Logging in...")
+                server.login(smtp_user, smtp_password)
+                print("[EMAIL] Sending message...")
+                server.sendmail(smtp_from, to_email, msg.as_string())
+        
         print("[EMAIL] Email sent successfully!")
         return True
     except smtplib.SMTPException as e:
