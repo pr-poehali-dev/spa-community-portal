@@ -46,7 +46,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       // Пробуем декодировать JWT токен локально
       const parts = storedToken.split('.');
-      if (parts.length === 3) {
+      if (parts.length === 3 && parts[1]) {
         try {
           const payload = JSON.parse(atob(parts[1]));
           console.log('[AuthContext] JWT payload:', payload);
@@ -54,16 +54,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           // Проверяем, не истек ли токен
           if (payload.exp && payload.exp * 1000 > Date.now()) {
             console.log('[AuthContext] Токен действителен до:', new Date(payload.exp * 1000));
-            // Если есть user_id в токене, значит это Telegram JWT
+            
+            // Если есть user_id и email - это email-auth токен
+            if (payload.user_id && payload.email) {
+              setUser({
+                id: payload.user_id,
+                email: payload.email,
+                name: payload.name || '',
+                role: 'participant' as any
+              });
+              setToken(storedToken);
+              setLoading(false);
+              console.log('[AuthContext] Email-auth сессия восстановлена');
+              return;
+            }
+            
+            // Если есть user_id но нет email - это Telegram JWT
             if (payload.user_id) {
-              // Для Telegram авторизации используем данные из cookies/localStorage
               const telegramUser = Cookies.get('telegram_user') || localStorage.getItem('telegram_user');
               console.log('[AuthContext] Telegram user из хранилища:', telegramUser);
               if (telegramUser) {
                 setUser(JSON.parse(telegramUser));
                 setToken(storedToken);
                 setLoading(false);
-                console.log('[AuthContext] Сессия восстановлена');
+                console.log('[AuthContext] Telegram сессия восстановлена');
                 return;
               }
             }
@@ -75,41 +89,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             localStorage.removeItem('auth_token');
             localStorage.removeItem('telegram_user');
             localStorage.removeItem('telegram_auth_refresh_token');
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
             setToken(null);
             setUser(null);
             setLoading(false);
             return;
           }
         } catch (e) {
-          console.log('[AuthContext] Ошибка декодирования JWT:', e);
-          // Не JWT токен, продолжаем проверку через API
+          console.log('[AuthContext] Ошибка декодирования JWT, очищаем токен:', e);
+          // Не JWT токен или невалидный формат - очищаем
         }
-      }
-
-      // Для email-авторизации пробуем декодировать access_token
-      try {
-        const payload = JSON.parse(atob(storedToken.split('.')[1]));
-        if (payload.exp && payload.exp * 1000 > Date.now() && payload.user_id && payload.email) {
-          // Токен валиден, создаём объект user из payload
-          setUser({
-            id: payload.user_id,
-            email: payload.email,
-            name: '', // Имя не хранится в токене
-            role: 'participant' as any
-          });
-          setToken(storedToken);
-          setLoading(false);
-          return;
-        }
-      } catch (e) {
-        console.log('[AuthContext] Не удалось декодировать токен:', e);
       }
       
-      // Токен невалиден
+      // Если дошли сюда - токен невалиден
+      console.log('[AuthContext] Токен невалиден, очищаем сессию');
       Cookies.remove('auth_token');
-      Cookies.remove('refresh_token');
+      Cookies.remove('telegram_user');
       localStorage.removeItem('auth_token');
+      localStorage.removeItem('access_token');
       localStorage.removeItem('refresh_token');
+      localStorage.removeItem('telegram_user');
       setToken(null);
       setUser(null);
     } catch (error) {
