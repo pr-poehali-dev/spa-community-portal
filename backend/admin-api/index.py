@@ -324,11 +324,15 @@ def update_user(conn, user_id, data):
     return {'success': True}
 
 def delete_user(conn, user_id):
+    """Soft delete - mark user as inactive instead of deleting (due to foreign key constraints)"""
     cursor = conn.cursor()
-    cursor.execute("DELETE FROM t_p13705114_spa_community_portal.users WHERE id=%s", (user_id,))
+    cursor.execute(
+        "UPDATE t_p13705114_spa_community_portal.users SET is_active = FALSE WHERE id=%s",
+        (user_id,)
+    )
     conn.commit()
     cursor.close()
-    return {'success': True}
+    return {'success': True, 'message': 'Пользователь деактивирован'}
 
 def get_all_bookings(conn):
     cursor = conn.cursor()
