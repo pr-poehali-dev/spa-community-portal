@@ -57,6 +57,7 @@ def execute(sql: str) -> None:
     """Execute INSERT/UPDATE/DELETE query."""
     conn = get_connection()
     cur = conn.cursor()
+    print(f"[DB DEBUG] Executing SQL: {sql[:200]}...")  # Log first 200 chars
     cur.execute(sql)
     conn.commit()
     cur.close()
