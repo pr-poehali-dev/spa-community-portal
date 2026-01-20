@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import Cookies from 'js-cookie';
 
-const AUTH_API_URL = 'https://functions.poehali.dev/dc13fdd2-eb59-4658-8080-4ab0c13a84af';
+const AUTH_API_URL = 'https://functions.poehali.dev/fdba6fa3-4998-4f82-ac05-2dd07a9acac3';
 
 export interface User {
   id: number;
@@ -121,13 +121,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = async (email: string, password: string) => {
     try {
-      const response = await fetch(AUTH_API_URL, {
+      const response = await fetch(`${AUTH_API_URL}?action=login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          action: 'login',
           email,
           password
         })
@@ -151,18 +150,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const register = async (email: string, password: string, name: string, phone?: string, telegram?: string) => {
     try {
-      const response = await fetch(AUTH_API_URL, {
+      const response = await fetch(`${AUTH_API_URL}?action=register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          action: 'register',
           email,
           password,
-          name,
-          phone,
-          telegram
+          name
         })
       });
 
@@ -185,13 +181,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = async () => {
     try {
       if (token) {
-        await fetch(AUTH_API_URL, {
+        await fetch(`${AUTH_API_URL}?action=logout`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
           },
-          body: JSON.stringify({ action: 'logout' })
+          body: JSON.stringify({})
         });
       }
     } catch (error) {

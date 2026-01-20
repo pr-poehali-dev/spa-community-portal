@@ -18,7 +18,7 @@ const ForgotPasswordPage = () => {
     setLoading(true);
 
     try {
-      const response = await fetch('https://functions.poehali.dev/42489f06-2bf3-43cb-ac8a-5b283ec7160a', {
+      const response = await fetch('https://functions.poehali.dev/fdba6fa3-4998-4f82-ac05-2dd07a9acac3?action=reset-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
