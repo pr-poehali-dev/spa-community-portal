@@ -17,8 +17,8 @@ def _send_verification_code(user_id: int, email: str, S: str) -> dict:
     code = generate_code()
     expires_at = (datetime.utcnow() + timedelta(hours=VERIFICATION_CODE_HOURS)).isoformat()
 
-    # Delete old codes
-    execute(f"DELETE FROM {S}email_verification_tokens WHERE user_id = {escape(user_id)}")
+    # Expire old codes instead of deleting
+    execute(f"UPDATE {S}email_verification_tokens SET expires_at = '2000-01-01 00:00:00' WHERE user_id = {escape(user_id)}")
 
     # Store new code
     execute(f"""

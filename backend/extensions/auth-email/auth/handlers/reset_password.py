@@ -38,10 +38,7 @@ def handle(event: dict, origin: str = '*') -> dict:
             user_id = user[0]
             now = datetime.utcnow().isoformat()
 
-            # Delete old tokens
-            execute(f"DELETE FROM {S}password_reset_tokens WHERE user_id = {escape(user_id)}")
-
-            # Generate and store new code
+            # Generate and store new code (old tokens will expire automatically)
             reset_code = generate_code()
             expires_at = (datetime.utcnow() + timedelta(hours=RESET_CODE_LIFETIME_HOURS)).isoformat()
 
@@ -99,9 +96,12 @@ def handle(event: dict, origin: str = '*') -> dict:
             WHERE id = {escape(user_id)}
         """)
 
-        # Cleanup tokens
-        execute(f"DELETE FROM {S}password_reset_tokens WHERE user_id = {escape(user_id)}")
-        execute(f"DELETE FROM {S}refresh_tokens WHERE user_id = {escape(user_id)}")
+        # Mark token as used by updating expires_at to past
+        execute(f"""
+            UPDATE {S}password_reset_tokens 
+            SET expires_at = '2000-01-01 00:00:00'
+            WHERE user_id = {escape(user_id)} AND token_hash = {escape(code)}
+        """)
 
         return response(200, {'message': 'Пароль успешно изменён'}, origin)
 
