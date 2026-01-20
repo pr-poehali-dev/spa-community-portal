@@ -13,6 +13,7 @@ VERIFICATION_CODE_HOURS = 24
 
 def _send_verification_code(user_id: int, email: str, S: str) -> dict:
     """Generate and send verification code, return result dict."""
+    print(f"[REGISTER] Sending verification code to {email} for user_id={user_id}")
     now = datetime.utcnow().isoformat()
     code = generate_code()
     expires_at = (datetime.utcnow() + timedelta(hours=VERIFICATION_CODE_HOURS)).isoformat()
@@ -26,7 +27,11 @@ def _send_verification_code(user_id: int, email: str, S: str) -> dict:
         VALUES ({escape(user_id)}, {escape(code)}, {escape(expires_at)}, {escape(now)})
     """)
 
-    if send_verification_code(email, code):
+    print(f"[REGISTER] Code stored in DB, calling send_verification_code()")
+    send_result = send_verification_code(email, code)
+    print(f"[REGISTER] send_verification_code returned: {send_result}")
+    
+    if send_result:
         return {'message': 'Код подтверждения отправлен на email', 'sent': True}
     return {'message': 'Не удалось отправить код', 'sent': False}
 
@@ -40,6 +45,8 @@ def handle(event: dict, origin: str = '*') -> dict:
     password = str(payload.get('password', ''))
     name = str(payload.get('name', '')).strip()[:255]
 
+    print(f"[REGISTER] Registration request for {email}")
+
     if not email or not validate_email(email):
         return error(400, 'Некорректный email', origin)
 
@@ -49,6 +56,7 @@ def handle(event: dict, origin: str = '*') -> dict:
 
     S = get_schema()
     email_enabled = is_email_enabled()
+    print(f"[REGISTER] Email enabled: {email_enabled}")
 
     # Check if user exists
     existing = query_one(f"SELECT id, email_verified, password_hash FROM {S}users WHERE email = {escape(email)}")
