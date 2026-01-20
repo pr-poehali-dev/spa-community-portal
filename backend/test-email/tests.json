@@ -1,0 +1,16 @@
+{
+  "tests": [
+    {
+      "name": "SMTP diagnostics test",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 200,
+      "expectedBody": {
+        "dns_ok": "boolean",
+        "smtp_ok": "boolean",
+        "details": "string"
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}
