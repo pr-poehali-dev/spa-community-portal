@@ -43,7 +43,7 @@ const Home = () => {
 
   return (
     <div className="animate-fade-in">
-      <section className="relative h-[90vh] flex items-center justify-center overflow-hidden">
+      <section className="relative min-h-[85vh] md:h-[90vh] flex items-center justify-center overflow-hidden">
         <div 
           className="absolute inset-0 bg-cover bg-center"
           style={{ 
@@ -51,14 +51,14 @@ const Home = () => {
             filter: 'brightness(0.5)'
           }}
         />
-        <div className="relative z-10 text-center text-white px-4 max-w-5xl mx-auto">
-          <h1 className="text-5xl md:text-7xl font-serif font-bold mb-6 animate-scale-in">
-            Тёплый круг. Настоящий пар.<br/>Ваше сообщество.
+        <div className="relative z-10 text-center text-white px-4 py-12 max-w-5xl mx-auto">
+          <h1 className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-serif font-bold mb-4 md:mb-6 animate-scale-in leading-tight">
+            Тёплый круг.<br className="sm:hidden" /> Настоящий пар.<br/>Ваше сообщество.
           </h1>
-          <p className="text-xl md:text-2xl mb-10 max-w-3xl mx-auto leading-relaxed">Собираем единомышленников в лучших банях Москвы. аренда в складчину, экспертные мастера и душевная атмосфера.</p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <a href="https://t.me/sparkomrf" target="_blank" rel="noopener noreferrer">
-              <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-8 py-6 text-lg">
+          <p className="text-base sm:text-lg md:text-xl lg:text-2xl mb-8 md:mb-10 max-w-3xl mx-auto leading-relaxed">Собираем единомышленников в лучших банях Москвы. аренда в складчину, экспертные мастера и душевная атмосфера.</p>
+          <div className="flex flex-col sm:flex-row gap-3 md:gap-4 justify-center items-stretch sm:items-center">
+            <a href="https://t.me/sparkomrf" target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto">
+              <Button size="lg" className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-6 md:px-8 py-4 md:py-6 text-base md:text-lg">
                 <Icon name="Send" size={20} className="mr-2" />
                 Вступить в сообщество
               </Button>
@@ -66,7 +66,7 @@ const Home = () => {
             <Button 
               size="lg" 
               variant="outline" 
-              className="bg-white/10 backdrop-blur-sm border-white/30 text-white hover:bg-white/20 font-semibold px-8 py-6 text-lg"
+              className="w-full sm:w-auto bg-white/10 backdrop-blur-sm border-white/30 text-white hover:bg-white/20 font-semibold px-6 md:px-8 py-4 md:py-6 text-base md:text-lg"
               onClick={() => scrollToSection('how-it-works')}
             >
               Как это работает?
@@ -75,12 +75,12 @@ const Home = () => {
         </div>
       </section>
 
-      <section className="py-20 bg-background">
+      <section className="py-12 md:py-20 bg-background">
         <div className="container mx-auto px-4">
-          <h2 className="text-4xl md:text-5xl font-serif font-bold text-center mb-4">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-serif font-bold text-center mb-3 md:mb-4 leading-tight">
             Баня становится лучше, когда ты не один
           </h2>
-          <p className="text-center text-muted-foreground mb-16 text-lg max-w-2xl mx-auto">
+          <p className="text-center text-muted-foreground mb-10 md:mb-16 text-base md:text-lg max-w-2xl mx-auto">
             В чём ценность СПАРКОМа?
           </p>
           
@@ -136,24 +136,24 @@ const Home = () => {
         </div>
       </section>
 
-      <section className="py-20 bg-muted">
+      <section className="py-12 md:py-20 bg-muted">
         <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row justify-between items-center mb-12">
-            <div className="mb-6 md:mb-0">
-              <h2 className="text-4xl md:text-5xl font-serif font-bold mb-2">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 md:mb-12 gap-4">
+            <div>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-serif font-bold mb-1 md:mb-2 leading-tight">
                 Ближайшие банные четверги
               </h2>
-              <p className="text-muted-foreground text-lg">(и другие встречи)</p>
+              <p className="text-muted-foreground text-base md:text-lg">(и другие встречи)</p>
             </div>
-            <Link to="/events">
-              <Button variant="outline" size="lg">
+            <Link to="/events" className="w-full md:w-auto">
+              <Button variant="outline" size="lg" className="w-full md:w-auto">
                 Вся афиша
                 <Icon name="ArrowRight" size={20} className="ml-2" />
               </Button>
             </Link>
           </div>
 
-          <div className="flex flex-wrap gap-3 mb-8 justify-center">
+          <div className="flex flex-wrap gap-2 md:gap-3 mb-6 md:mb-8 justify-center">
             <Button 
               variant={eventFilter === 'all' ? 'default' : 'outline'}
               onClick={() => setEventFilter('all')}
