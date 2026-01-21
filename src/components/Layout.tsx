@@ -23,21 +23,21 @@ export const Layout = ({ children }: LayoutProps) => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <nav className="sticky top-0 z-50 bg-card/95 backdrop-blur-md border-b border-border">
-        <div className="container mx-auto px-4 py-3">
+      <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border/50">
+        <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <Link to="/" className="flex-shrink-0">
-              <h1 className="text-xl md:text-3xl font-serif font-bold text-primary">спарком.рф</h1>
+              <h1 className="text-xl md:text-2xl font-serif font-semibold tracking-tight text-foreground">спарком.рф</h1>
             </Link>
             
-            <div className="hidden lg:flex items-center gap-6">
-              <Link to="/" className={`text-base font-medium transition-colors ${isActive('/') && location.pathname === '/' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}>Главная</Link>
-              <Link to="/events" className={`text-base font-medium transition-colors ${isActive('/events') ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}>События</Link>
-              <Link to="/calendar" className={`text-base font-medium transition-colors ${isActive('/calendar') ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}>Календарь</Link>
-              <Link to="/bany" className={`text-base font-medium transition-colors ${isActive('/bany') ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}>Бани</Link>
-              <Link to="/masters" className={`text-base font-medium transition-colors ${isActive('/masters') ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}>Мастера</Link>
-              <Link to="/blog" className={`text-base font-medium transition-colors ${isActive('/blog') ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}>Блог</Link>
-              <Link to="/about" className={`text-base font-medium transition-colors ${isActive('/about') ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}>О нас</Link>
+            <div className="hidden lg:flex items-center gap-8">
+              <Link to="/" className={`text-sm font-medium transition-colors ${isActive('/') && location.pathname === '/' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>Главная</Link>
+              <Link to="/events" className={`text-sm font-medium transition-colors ${isActive('/events') ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>События</Link>
+              <Link to="/calendar" className={`text-sm font-medium transition-colors ${isActive('/calendar') ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>Календарь</Link>
+              <Link to="/bany" className={`text-sm font-medium transition-colors ${isActive('/bany') ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>Бани</Link>
+              <Link to="/masters" className={`text-sm font-medium transition-colors ${isActive('/masters') ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>Мастера</Link>
+              <Link to="/blog" className={`text-sm font-medium transition-colors ${isActive('/blog') ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>Блог</Link>
+              <Link to="/about" className={`text-sm font-medium transition-colors ${isActive('/about') ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>О нас</Link>
               
               {user ? (
                 <DropdownMenu>
@@ -75,7 +75,7 @@ export const Layout = ({ children }: LayoutProps) => {
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : (
-                <Button asChild variant="default" size="sm">
+                <Button asChild variant="ghost" size="sm" className="font-medium">
                   <Link to="/login">
                     <Icon name="LogIn" className="h-4 w-4 mr-2" />
                     Войти
