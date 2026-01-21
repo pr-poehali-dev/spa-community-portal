@@ -55,7 +55,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           if (payload.exp && payload.exp * 1000 > Date.now()) {
             console.log('[AuthContext] Токен действителен до:', new Date(payload.exp * 1000));
             
-            // Если есть user_id и email - это email-auth токен
+            // Если есть user_id и email - это email-auth или yandex-auth токен
             if (payload.user_id && payload.email) {
               setUser({
                 id: payload.user_id,
@@ -65,7 +65,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               });
               setToken(storedToken);
               setLoading(false);
-              console.log('[AuthContext] Email-auth сессия восстановлена');
+              console.log('[AuthContext] Email/Yandex-auth сессия восстановлена');
               return;
             }
             
@@ -86,9 +86,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             console.log('[AuthContext] Токен истек');
             Cookies.remove('auth_token');
             Cookies.remove('telegram_user');
+            Cookies.remove('yandex_user');
             localStorage.removeItem('auth_token');
             localStorage.removeItem('telegram_user');
+            localStorage.removeItem('yandex_user');
             localStorage.removeItem('telegram_auth_refresh_token');
+            localStorage.removeItem('yandex_auth_refresh_token');
             localStorage.removeItem('access_token');
             localStorage.removeItem('refresh_token');
             setToken(null);
@@ -106,10 +109,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.log('[AuthContext] Токен невалиден, очищаем сессию');
       Cookies.remove('auth_token');
       Cookies.remove('telegram_user');
+      Cookies.remove('yandex_user');
       localStorage.removeItem('auth_token');
       localStorage.removeItem('access_token');
       localStorage.removeItem('refresh_token');
       localStorage.removeItem('telegram_user');
+      localStorage.removeItem('yandex_user');
+      localStorage.removeItem('yandex_auth_refresh_token');
       setToken(null);
       setUser(null);
     } catch (error) {
@@ -206,10 +212,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       Cookies.remove('auth_token');
       Cookies.remove('refresh_token');
       Cookies.remove('telegram_user');
+      Cookies.remove('yandex_user');
       localStorage.removeItem('auth_token');
       localStorage.removeItem('refresh_token');
       localStorage.removeItem('telegram_user');
+      localStorage.removeItem('yandex_user');
       localStorage.removeItem('telegram_auth_refresh_token');
+      localStorage.removeItem('yandex_auth_refresh_token');
       setToken(null);
       setUser(null);
     }

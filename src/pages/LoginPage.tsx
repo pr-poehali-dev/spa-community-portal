@@ -10,6 +10,8 @@ import { useToast } from '@/hooks/use-toast';
 import Icon from '@/components/ui/icon';
 import { TelegramLoginButton } from '@/components/extensions/telegram-bot/TelegramLoginButton';
 import { useTelegramAuth } from '@/components/extensions/telegram-bot/useTelegramAuth';
+import { YandexLoginButton } from '@/components/extensions/yandex-auth/YandexLoginButton';
+import { useYandexAuth } from '@/components/extensions/yandex-auth/useYandexAuth';
 
 const generateCaptcha = () => {
   const num1 = Math.floor(Math.random() * 10) + 1;
@@ -19,6 +21,7 @@ const generateCaptcha = () => {
 
 const TELEGRAM_AUTH_URL = 'https://functions.poehali.dev/dc3fb91d-b358-49d4-8739-e624e705ab71';
 const TELEGRAM_BOT_USERNAME = import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'SparcomAuth_bot';
+const YANDEX_AUTH_URL = 'https://functions.poehali.dev/ecb56210-8c2b-4f4e-aa4b-b5b742d25f6a';
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -33,6 +36,24 @@ const LoginPage = () => {
       logout: `${TELEGRAM_AUTH_URL}?action=logout`,
     },
     botUsername: TELEGRAM_BOT_USERNAME,
+  });
+
+  const yandexAuth = useYandexAuth({
+    apiUrls: {
+      authUrl: `${YANDEX_AUTH_URL}?action=auth_url`,
+      callback: `${YANDEX_AUTH_URL}?action=callback`,
+      refresh: `${YANDEX_AUTH_URL}?action=refresh`,
+      logout: `${YANDEX_AUTH_URL}?action=logout`,
+    },
+    onAuthChange: (user) => {
+      if (user) {
+        toast({
+          title: 'Успешный вход',
+          description: `Добро пожаловать, ${user.name || user.email}!`
+        });
+        navigate(from, { replace: true });
+      }
+    }
   });
 
   const [loginData, setLoginData] = useState({ email: '', password: '', captcha: '' });
@@ -62,6 +83,10 @@ const LoginPage = () => {
       title: 'Переход в Telegram',
       description: 'Откройте бота в Telegram для авторизации'
     });
+  };
+
+  const handleYandexLogin = async () => {
+    await yandexAuth.login();
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -233,11 +258,18 @@ const LoginPage = () => {
                   </div>
                 </div>
 
-                <TelegramLoginButton 
-                  onClick={handleTelegramLogin}
-                  isLoading={telegramAuth.isLoading}
-                  className="w-full"
-                />
+                <div className="space-y-3">
+                  <YandexLoginButton
+                    onClick={handleYandexLogin}
+                    isLoading={yandexAuth.isLoading}
+                    className="w-full"
+                  />
+                  <TelegramLoginButton 
+                    onClick={handleTelegramLogin}
+                    isLoading={telegramAuth.isLoading}
+                    className="w-full"
+                  />
+                </div>
 
                 <div className="text-center">
                   <a href="/forgot-password" className="text-sm text-orange-600 hover:text-orange-700 hover:underline">
