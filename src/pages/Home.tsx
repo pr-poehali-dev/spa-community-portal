@@ -30,11 +30,24 @@ const Home = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let isMounted = true;
+
+    setLoading(true);
     const filters = eventFilter === 'all' ? {} : { gender_type: eventFilter };
     getEvents(filters)
-      .then(data => setEvents(data.items))
-      .catch(console.error)
-      .finally(() => setLoading(false));
+      .then(data => {
+        if (isMounted) setEvents(data.items);
+      })
+      .catch(err => {
+        if (isMounted) console.error(err);
+      })
+      .finally(() => {
+        if (isMounted) setLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
   }, [eventFilter]);
 
   const scrollToSection = (id: string) => {

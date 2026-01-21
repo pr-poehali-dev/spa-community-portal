@@ -15,10 +15,23 @@ const MastersListPage = () => {
   const [sortBy, setSortBy] = useState<string>('rating');
 
   useEffect(() => {
+    let isMounted = true;
+
+    setLoading(true);
     getMasters()
-      .then(data => setMasters(data))
-      .catch(console.error)
-      .finally(() => setLoading(false));
+      .then(data => {
+        if (isMounted) setMasters(data);
+      })
+      .catch(err => {
+        if (isMounted) console.error(err);
+      })
+      .finally(() => {
+        if (isMounted) setLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const specializations = Array.from(new Set(masters.map(m => m.specialization)));

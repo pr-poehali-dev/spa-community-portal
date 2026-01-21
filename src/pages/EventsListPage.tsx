@@ -34,36 +34,42 @@ const EventsListPage = () => {
   const [sort, setSort] = useState<'date' | 'price_asc' | 'price_desc'>('date');
 
   useEffect(() => {
-    loadEvents();
-  }, [filterType, filterCity, filterAvailability, sort]);
+    let isMounted = true;
 
-  const loadEvents = async () => {
-    setLoading(true);
-    try {
-      const filters: any = {
-        sort: sort
-      };
-      
-      if (filterType !== 'all') {
-        filters.gender_type = filterType;
+    const loadEvents = async () => {
+      if (isMounted) setLoading(true);
+      try {
+        const filters: any = {
+          sort: sort
+        };
+        
+        if (filterType !== 'all') {
+          filters.gender_type = filterType;
+        }
+        
+        if (filterCity !== 'all') {
+          filters.city = filterCity;
+        }
+        
+        if (filterAvailability === 'available') {
+          filters.available_only = true;
+        }
+        
+        const data = await getEvents(filters);
+        if (isMounted) setEvents(data.items || []);
+      } catch (error) {
+        if (isMounted) console.error('Failed to load events:', error);
+      } finally {
+        if (isMounted) setLoading(false);
       }
-      
-      if (filterCity !== 'all') {
-        filters.city = filterCity;
-      }
-      
-      if (filterAvailability === 'available') {
-        filters.available_only = true;
-      }
-      
-      const data = await getEvents(filters);
-      setEvents(data.items || []);
-    } catch (error) {
-      console.error('Failed to load events:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+
+    loadEvents();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [filterType, filterCity, filterAvailability, sort]);
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return 'Дата уточняется';

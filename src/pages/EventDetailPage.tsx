@@ -35,38 +35,44 @@ const EventDetailPage = () => {
   const [schedulesLoading, setSchedulesLoading] = useState(false);
 
   useEffect(() => {
+    let isMounted = true;
+
+    const loadEventData = async (eventSlug: string) => {
+      if (isMounted) setLoading(true);
+      try {
+        const eventData = await getEventBySlug(eventSlug);
+        if (isMounted) setEvent(eventData);
+        
+        if (eventData && eventData.id && isMounted) {
+          loadSchedules(eventData.id);
+        }
+      } catch (error) {
+        if (isMounted) console.error('Failed to load event:', error);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    const loadSchedules = async (eventId: string) => {
+      if (isMounted) setSchedulesLoading(true);
+      try {
+        const schedulesData = await getEventSchedules(eventId);
+        if (isMounted) setSchedules(schedulesData.schedules || []);
+      } catch (error) {
+        if (isMounted) console.error('Failed to load schedules:', error);
+      } finally {
+        if (isMounted) setSchedulesLoading(false);
+      }
+    };
+
     if (slug) {
       loadEventData(slug);
     }
+
+    return () => {
+      isMounted = false;
+    };
   }, [slug]);
-
-  const loadEventData = async (eventSlug: string) => {
-    setLoading(true);
-    try {
-      const eventData = await getEventBySlug(eventSlug);
-      setEvent(eventData);
-      
-      if (eventData && eventData.id) {
-        loadSchedules(eventData.id);
-      }
-    } catch (error) {
-      console.error('Failed to load event:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadSchedules = async (eventId: string) => {
-    setSchedulesLoading(true);
-    try {
-      const schedulesData = await getEventSchedules(eventId);
-      setSchedules(schedulesData.schedules || []);
-    } catch (error) {
-      console.error('Failed to load schedules:', error);
-    } finally {
-      setSchedulesLoading(false);
-    }
-  };
 
   const formatDateTime = (dateString: string) => {
     const date = new Date(dateString);
