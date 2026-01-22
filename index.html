@@ -35,15 +35,21 @@
 (function() {
   try {
     // Version of auth system - increment this to force cleanup on all clients
-    var AUTH_SYSTEM_VERSION = '2.0.0';
+    var AUTH_SYSTEM_VERSION = '2.1.0';
     var currentVersion = localStorage.getItem('auth_system_version');
     
-    // If version doesn't match or auth_token is invalid JWT, do full cleanup
-    var authToken = localStorage.getItem('auth_token');
-    var needsCleanup = currentVersion !== AUTH_SYSTEM_VERSION || (authToken && authToken.split('.').length !== 3);
+    // Check both localStorage AND cookies for invalid tokens
+    var authTokenLS = localStorage.getItem('auth_token');
+    var authTokenCookie = ('; ' + document.cookie).split('; auth_token=').pop().split(';')[0];
+    var hasInvalidToken = (authTokenLS && authTokenLS.split('.').length !== 3) || 
+                          (authTokenCookie && authTokenCookie.split('.').length !== 3);
+    
+    var needsCleanup = currentVersion !== AUTH_SYSTEM_VERSION || hasInvalidToken;
     
     if (needsCleanup) {
-      console.log('[CLEANUP v2.0] Performing full auth storage cleanup');
+      console.log('[CLEANUP v2.1] Found invalid token, performing full cleanup');
+      console.log('[CLEANUP v2.1] Old token from localStorage:', authTokenLS ? authTokenLS.substring(0, 30) + '...' : 'none');
+      console.log('[CLEANUP v2.1] Old token from cookie:', authTokenCookie ? authTokenCookie.substring(0, 30) + '...' : 'none');
       
       // Clear ALL localStorage
       localStorage.clear();
@@ -51,16 +57,26 @@
       // Set new version
       localStorage.setItem('auth_system_version', AUTH_SYSTEM_VERSION);
       
-      // Clear ALL cookies
+      // Clear ALL cookies (including auth_token specifically)
+      var cookieList = ['auth_token', 'telegram_user', 'yandex_user', 'telegram_auth_refresh_token', 'yandex_auth_refresh_token'];
+      for (var i = 0; i < cookieList.length; i++) {
+        document.cookie = cookieList[i] + '=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+        document.cookie = cookieList[i] + '=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=' + window.location.hostname + ';';
+      }
+      
+      // Also clear any other cookies
       var cookies = document.cookie.split(';');
-      for (var i = 0; i < cookies.length; i++) {
-        var cookie = cookies[i];
+      for (var j = 0; j < cookies.length; j++) {
+        var cookie = cookies[j];
         var eqPos = cookie.indexOf('=');
         var name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
         document.cookie = name + '=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
       }
       
-      console.log('[CLEANUP v2.0] Storage cleaned, version set to ' + AUTH_SYSTEM_VERSION);
+      console.log('[CLEANUP v2.1] Complete! All auth data cleared, version set to ' + AUTH_SYSTEM_VERSION);
+      console.log('[CLEANUP v2.1] Page will NOT reload - React will load with clean state');
+    } else {
+      console.log('[CLEANUP v2.1] Auth system version OK, no cleanup needed');
     }
   } catch (e) {
     console.error('[CLEANUP] Error:', e);
