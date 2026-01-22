@@ -19,7 +19,7 @@ const YandexCallbackPage = () => {
     },
     onAuthChange: async (user) => {
       if (user) {
-        await checkAuth();
+        await checkAuth(true);
         navigate('/account', { replace: true });
       }
     }
@@ -38,8 +38,8 @@ const YandexCallbackPage = () => {
         
         if (success) {
           console.log('[YandexCallback] Авторизация успешна, токен уже сохранён в hook');
-          console.log('[YandexCallback] Вызываю checkAuth()');
-          await checkAuth();
+          console.log('[YandexCallback] Вызываю checkAuth(true)');
+          await checkAuth(true);
           console.log('[YandexCallback] Переход на /account');
           navigate('/account', { replace: true });
         } else {

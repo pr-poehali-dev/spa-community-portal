@@ -20,7 +20,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name: string, phone?: string, telegram?: string) => Promise<void>;
   logout: () => Promise<void>;
-  checkAuth: () => Promise<void>;
+  checkAuth: (forceReload?: boolean) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -38,11 +38,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [token, setToken] = useState<string | null>(getToken());
   const [loading, setLoading] = useState(true);
 
-  const checkAuth = async () => {
+  const checkAuth = async (forceReload = false) => {
     const storedToken = getToken();
     
     if (!storedToken) {
       setLoading(false);
+      setToken(null);
+      setUser(null);
       return;
     }
 
@@ -80,11 +82,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           role: payload.role || 'participant'
         });
         setToken(storedToken);
-        console.log('[Auth] Session restored');
+        console.log('[Auth] Session restored', forceReload ? '(force reload)' : '');
       } else {
         // Invalid payload
         clearTokenStorage();
         setToken(null);
+        setUser(null);
       }
     } catch (error) {
       console.error('[Auth] Token decode error:', error);

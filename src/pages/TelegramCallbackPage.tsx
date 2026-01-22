@@ -63,8 +63,8 @@ const TelegramCallbackPage = () => {
             localStorage.setItem('telegram_auth_refresh_token', data.refresh_token);
           }
 
-          // Обновляем AuthContext
-          await checkAuth();
+          // Обновляем AuthContext (force reload)
+          await checkAuth(true);
 
           setStatus('success');
           setTimeout(() => navigate('/account'), 1500);
