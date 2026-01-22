@@ -37,17 +37,8 @@ const YandexCallbackPage = () => {
         console.log('[YandexCallback] Access token:', yandexAuth.accessToken?.substring(0, 30) + '...');
         console.log('[YandexCallback] User:', yandexAuth.user);
         
-        if (success && yandexAuth.accessToken) {
-          console.log('[YandexCallback] Сохраняю токен в cookies и localStorage');
-          Cookies.set('auth_token', yandexAuth.accessToken, { expires: 30, sameSite: 'lax' });
-          localStorage.setItem('auth_token', yandexAuth.accessToken);
-          
-          if (yandexAuth.user) {
-            Cookies.set('yandex_user', JSON.stringify(yandexAuth.user), { expires: 30, sameSite: 'lax' });
-            localStorage.setItem('yandex_user', JSON.stringify(yandexAuth.user));
-            console.log('[YandexCallback] Данные пользователя сохранены');
-          }
-          
+        if (success) {
+          console.log('[YandexCallback] Авторизация успешна, токен уже сохранён в hook');
           console.log('[YandexCallback] Вызываю checkAuth()');
           await checkAuth();
           console.log('[YandexCallback] Переход на /account');
