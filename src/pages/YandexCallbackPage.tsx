@@ -30,25 +30,35 @@ const YandexCallbackPage = () => {
     const handleCallback = async () => {
       try {
         const params = new URLSearchParams(window.location.search);
+        console.log('[YandexCallback] Начало обработки callback, params:', params.toString());
+        
         const success = await yandexAuth.handleCallback(params);
+        console.log('[YandexCallback] Результат handleCallback:', success);
+        console.log('[YandexCallback] Access token:', yandexAuth.accessToken?.substring(0, 30) + '...');
+        console.log('[YandexCallback] User:', yandexAuth.user);
         
         if (success && yandexAuth.accessToken) {
+          console.log('[YandexCallback] Сохраняю токен в cookies и localStorage');
           Cookies.set('auth_token', yandexAuth.accessToken, { expires: 30, sameSite: 'lax' });
           localStorage.setItem('auth_token', yandexAuth.accessToken);
           
           if (yandexAuth.user) {
             Cookies.set('yandex_user', JSON.stringify(yandexAuth.user), { expires: 30, sameSite: 'lax' });
             localStorage.setItem('yandex_user', JSON.stringify(yandexAuth.user));
+            console.log('[YandexCallback] Данные пользователя сохранены');
           }
           
+          console.log('[YandexCallback] Вызываю checkAuth()');
           await checkAuth();
+          console.log('[YandexCallback] Переход на /account');
           navigate('/account', { replace: true });
         } else {
+          console.error('[YandexCallback] success или accessToken false/null');
           setError('Ошибка авторизации через Яндекс');
           setTimeout(() => navigate('/login', { replace: true }), 2000);
         }
       } catch (err) {
-        console.error('Yandex callback error:', err);
+        console.error('[YandexCallback] Ошибка:', err);
         setError('Произошла ошибка при авторизации');
         setTimeout(() => navigate('/login', { replace: true }), 2000);
       }

@@ -44,8 +44,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
     try {
-      // Пробуем декодировать JWT токен локально
+      // Проверяем формат JWT токена (должен быть 3 части разделенные точками)
       const parts = storedToken.split('.');
+      if (parts.length !== 3) {
+        console.log('[AuthContext] Невалидный формат токена (не JWT), очищаем');
+        Cookies.remove('auth_token');
+        Cookies.remove('telegram_user');
+        Cookies.remove('yandex_user');
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('telegram_user');
+        localStorage.removeItem('yandex_user');
+        localStorage.removeItem('telegram_auth_refresh_token');
+        localStorage.removeItem('yandex_auth_refresh_token');
+        setToken(null);
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+
+      // Пробуем декодировать JWT токен локально
       if (parts.length === 3 && parts[1]) {
         try {
           const payload = JSON.parse(atob(parts[1]));

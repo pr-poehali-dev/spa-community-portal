@@ -230,7 +230,10 @@ export function useYandexAuth(options: UseYandexAuthOptions): UseYandexAuthRetur
         const code = params.get("code");
         const state = params.get("state");
 
+        console.log('[useYandexAuth] handleCallback вызван, code:', code?.substring(0, 20) + '...', 'state:', state?.substring(0, 20) + '...');
+
         if (!code) {
+          console.error('[useYandexAuth] Нет authorization code');
           setError("No authorization code received");
           return false;
         }
@@ -238,19 +241,31 @@ export function useYandexAuth(options: UseYandexAuthOptions): UseYandexAuthRetur
         // Verify state for CSRF protection
         const storedState = getStoredState();
         if (storedState && state !== storedState) {
+          console.error('[useYandexAuth] State не совпадает. stored:', storedState?.substring(0, 20), 'received:', state?.substring(0, 20));
           setError("Invalid state parameter");
           return false;
         }
 
+        console.log('[useYandexAuth] Отправляю POST запрос на:', apiUrls.callback);
         const response = await fetch(apiUrls.callback, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ code }),
         });
 
+        console.log('[useYandexAuth] Ответ от backend:', response.status, response.statusText);
         const data = await response.json();
+        console.log('[useYandexAuth] Данные от backend:', {
+          hasAccessToken: !!data.access_token,
+          accessTokenStart: data.access_token?.substring(0, 30) + '...',
+          hasRefreshToken: !!data.refresh_token,
+          hasUser: !!data.user,
+          expiresIn: data.expires_in,
+          error: data.error
+        });
 
         if (!response.ok) {
+          console.error('[useYandexAuth] Backend вернул ошибку:', data.error);
           setError(data.error || "Authentication failed");
           return false;
         }
@@ -259,12 +274,15 @@ export function useYandexAuth(options: UseYandexAuthOptions): UseYandexAuthRetur
         clearStoredState();
 
         // Set auth data
+        console.log('[useYandexAuth] Устанавливаю access_token и user в state');
         setAccessToken(data.access_token);
         setUser(data.user);
         setStoredRefreshToken(data.refresh_token);
         scheduleRefresh(data.expires_in, refreshTokenFn);
+        console.log('[useYandexAuth] Авторизация успешна!');
         return true;
       } catch (err) {
+        console.error('[useYandexAuth] Ошибка в handleCallback:', err);
         setError("Network error");
         return false;
       } finally {
