@@ -41,7 +41,7 @@ def get_connection():
 
 def get_schema() -> str:
     """Get database schema prefix."""
-    schema = os.environ.get('MAIN_DB_SCHEMA', 'public')
+    schema = os.environ.get('MAIN_DB_SCHEMA', 't_p13705114_spa_community_portal')
     return f"{schema}." if schema else ""
 
 
