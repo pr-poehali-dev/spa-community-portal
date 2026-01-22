@@ -149,9 +149,10 @@ export function useYandexAuth(options: UseYandexAuthOptions): UseYandexAuthRetur
       }
 
       const data = await response.json();
-      setAccessToken(data.access_token);
-      setUser(data.user);
-      scheduleRefresh(data.expires_in, refreshTokenFn);
+      if (data.access_token) {
+        setAccessToken(data.access_token);
+        scheduleRefresh(data.expires_in, refreshTokenFn);
+      }
       return true;
     } catch {
       clearAuth();
@@ -273,11 +274,18 @@ export function useYandexAuth(options: UseYandexAuthOptions): UseYandexAuthRetur
         // Clear temporary storage
         clearStoredState();
 
-        // Set auth data
+        // Set auth data and save to unified storage
         console.log('[useYandexAuth] Устанавливаю access_token и user в state');
         setAccessToken(data.access_token);
         setUser(data.user);
         setStoredRefreshToken(data.refresh_token);
+        
+        // Save to cookies and localStorage for unified auth system
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('auth_token', data.access_token);
+          document.cookie = `auth_token=${data.access_token}; path=/; max-age=900`;
+        }
+        
         scheduleRefresh(data.expires_in, refreshTokenFn);
         console.log('[useYandexAuth] Авторизация успешна!');
         return true;

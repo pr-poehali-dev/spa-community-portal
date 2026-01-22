@@ -1,32 +1,44 @@
-"""Yandex OAuth authentication handler."""
-import base64
+"""
+Yandex OAuth2 Authentication Handler
+
+API:
+  GET  /?action=auth-url    - Get authorization URL
+  POST /?action=callback    - Exchange code for tokens
+  POST /?action=refresh     - Refresh access token
+  POST /?action=logout      - Logout user
+
+Returns JWT access tokens compatible with Email auth system.
+"""
 import json
 import os
 import secrets
 import hashlib
-from datetime import datetime, timedelta, timezone
+import base64
 from urllib.request import Request, urlopen
 from urllib.parse import urlencode
 from urllib.error import HTTPError
-
-import jwt
+from datetime import datetime, timedelta, timezone
 import psycopg2
+import jwt
+
 
 # =============================================================================
-# CONSTANTS
+# CONFIG
 # =============================================================================
 
-YANDEX_AUTH_URL = "https://oauth.yandex.ru/authorize"
-YANDEX_TOKEN_URL = "https://oauth.yandex.ru/token"
-YANDEX_USER_INFO_URL = "https://login.yandex.ru/info"
+YANDEX_AUTH_URL = 'https://oauth.yandex.ru/authorize'
+YANDEX_TOKEN_URL = 'https://oauth.yandex.ru/token'
+YANDEX_USER_INFO_URL = 'https://login.yandex.ru/info'
 
+JWT_ALGORITHM = 'HS256'
 ACCESS_TOKEN_EXPIRE_MINUTES = 15
 REFRESH_TOKEN_EXPIRE_DAYS = 30
 
 HEADERS = {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Content-Type': 'application/json'
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization'
 }
 
 
@@ -40,63 +52,50 @@ def get_connection():
 
 
 def get_schema() -> str:
-    """Get database schema prefix with quotes for proper escaping."""
+    """Get database schema prefix with quotes."""
     return '"t_p13705114_spa_community_portal".'
 
 
-def cleanup_expired_tokens(cur, schema: str) -> None:
-    """Delete expired refresh tokens."""
-    now = datetime.now(timezone.utc).isoformat()
-    cur.execute(f"DELETE FROM {schema}refresh_tokens WHERE expires_at < %s", (now,))
-
-
 # =============================================================================
-# SECURITY
+# JWT UTILITIES
 # =============================================================================
-
-def hash_token(token: str) -> str:
-    """Hash token with SHA256 for secure storage."""
-    return hashlib.sha256(token.encode('utf-8')).hexdigest()
-
 
 def get_jwt_secret() -> str:
-    """Get JWT secret with validation."""
+    """Get JWT secret from environment."""
     secret = os.environ.get('JWT_SECRET', '')
     if not secret or len(secret) < 32:
         raise ValueError('JWT_SECRET must be at least 32 characters')
     return secret
 
 
-# =============================================================================
-# JWT
-# =============================================================================
-
-def create_access_token(user_id: int, email: str | None = None, name: str | None = None) -> tuple[str, int]:
-    """Create JWT access token."""
-    secret = get_jwt_secret()
-    expires_delta = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    now = datetime.now(timezone.utc)
-    expire = now + expires_delta
-
+def create_access_token(user_id: int, email: str, name: str) -> tuple[str, int]:
+    """Create JWT access token (same format as Email auth)."""
+    expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     payload = {
-        'sub': str(user_id),
         'user_id': user_id,
-        'exp': expire,
-        'iat': now,
-        'type': 'access'
+        'email': email,
+        'name': name,
+        'exp': int(expire.timestamp()),
+        'iat': int(datetime.now(timezone.utc).timestamp())
     }
-    if email:
-        payload['email'] = email
-    if name:
-        payload['name'] = name
-
-    token = jwt.encode(payload, secret, algorithm='HS256')
-    return token, int(expires_delta.total_seconds())
+    token = jwt.encode(payload, get_jwt_secret(), algorithm=JWT_ALGORITHM)
+    return token, ACCESS_TOKEN_EXPIRE_MINUTES * 60
 
 
 def create_refresh_token() -> str:
-    """Create refresh token."""
+    """Create random refresh token."""
     return secrets.token_urlsafe(32)
+
+
+def hash_token(token: str) -> str:
+    """Hash token for storage."""
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+def cleanup_expired_tokens(cur, S: str):
+    """Remove expired refresh tokens."""
+    now = datetime.now(timezone.utc).isoformat()
+    cur.execute(f"DELETE FROM {S}refresh_tokens WHERE expires_at < %s", (now,))
 
 
 # =============================================================================
@@ -114,11 +113,7 @@ def get_yandex_auth_url(client_id: str, redirect_uri: str, state: str) -> str:
     return f"{YANDEX_AUTH_URL}?{urlencode(params)}"
 
 
-def exchange_code_for_token(
-    code: str,
-    client_id: str,
-    client_secret: str
-) -> dict:
+def exchange_code_for_token(code: str, client_id: str, client_secret: str) -> dict:
     """Exchange authorization code for access token."""
     data = {
         'grant_type': 'authorization_code',
@@ -151,17 +146,19 @@ def get_yandex_user_info(access_token: str) -> dict:
         YANDEX_USER_INFO_URL,
         headers={
             'Authorization': f'OAuth {access_token}',
-            'Content-Type': 'application/json'
         },
         method='GET'
     )
 
-    with urlopen(request, timeout=10) as response:
-        return json.loads(response.read().decode())
+    try:
+        with urlopen(request, timeout=10) as response:
+            return json.loads(response.read().decode())
+    except HTTPError:
+        return {}
 
 
 # =============================================================================
-# HELPERS
+# HTTP HELPERS
 # =============================================================================
 
 def get_allowed_origins() -> list[str]:
@@ -193,7 +190,8 @@ def response(status_code: int, body: dict, origin: str = '*') -> dict:
     return {
         'statusCode': status_code,
         'headers': headers,
-        'body': json.dumps(body)
+        'body': json.dumps(body),
+        'isBase64Encoded': False
     }
 
 
@@ -280,9 +278,8 @@ def handle_callback(event: dict, origin: str) -> dict:
         print(f"[DEBUG] User info: id={user_info.get('id')}, email={user_info.get('default_email')}")
 
         yandex_id = str(user_info.get('id', ''))
-        email = user_info.get('default_email', '')
-        name = user_info.get('real_name') or user_info.get('display_name', '')
-        # Yandex avatar: https://avatars.yandex.net/get-yapic/{avatar_id}/islands-200
+        email = user_info.get('default_email', '') or f"yandex_{yandex_id}@temp.local"
+        name = user_info.get('real_name') or user_info.get('display_name', '') or f"Yandex User {yandex_id}"
         avatar_id = user_info.get('default_avatar_id', '')
         picture = f"https://avatars.yandex.net/get-yapic/{avatar_id}/islands-200" if avatar_id else ''
 
@@ -312,16 +309,17 @@ def handle_callback(event: dict, origin: str) -> dict:
                 email = db_email or email
                 name = db_name or name
                 picture = db_avatar or picture
+                print(f"[INFO] Existing user login: user_id={user_id}")
             else:
                 # 2. Check if user exists by email - link Yandex account
-                if email:
+                if email and not email.endswith('@temp.local'):
                     cur.execute(
                         f"SELECT id, name, avatar_url FROM {S}users WHERE email = %s",
                         (email,)
                     )
                     row = cur.fetchone()
 
-                if email and row:
+                if email and not email.endswith('@temp.local') and row:
                     # User found by email - link Yandex account
                     user_id, db_name, db_avatar = row
                     cur.execute(
@@ -333,8 +331,9 @@ def handle_callback(event: dict, origin: str) -> dict:
                     )
                     name = db_name or name
                     picture = db_avatar or picture
+                    print(f"[INFO] Linked Yandex to existing user: user_id={user_id}")
                 else:
-                    # 3. Create new user (password_hash required as NOT NULL)
+                    # 3. Create new user (password_hash='' for OAuth users)
                     cur.execute(
                         f"""INSERT INTO {S}users
                             (yandex_id, email, password_hash, name, avatar_url, email_verified, created_at, updated_at, last_login_at)
@@ -343,12 +342,15 @@ def handle_callback(event: dict, origin: str) -> dict:
                         (yandex_id, email, name, picture, now, now, now)
                     )
                     user_id = cur.fetchone()[0]
+                    print(f"[INFO] Created new user: user_id={user_id}")
 
+            # Create JWT tokens (same format as Email auth)
             access_token, expires_in = create_access_token(user_id, email, name)
             refresh_token = create_refresh_token()
             refresh_token_hash = hash_token(refresh_token)
             refresh_expires = (datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)).isoformat()
 
+            # Store refresh token in shared refresh_tokens table
             cur.execute(
                 f"""INSERT INTO {S}refresh_tokens (user_id, token_hash, expires_at, created_at)
                     VALUES (%s, %s, %s, %s)""",
@@ -356,6 +358,7 @@ def handle_callback(event: dict, origin: str) -> dict:
             )
 
             conn.commit()
+            print(f"[SUCCESS] Yandex auth complete for user_id={user_id}")
 
             return response(200, {
                 'access_token': access_token,
@@ -373,7 +376,7 @@ def handle_callback(event: dict, origin: str) -> dict:
         except Exception as e:
             print(f"[ERROR] Database error: {type(e).__name__}: {str(e)}")
             conn.rollback()
-            return error(500, f'Database error: {type(e).__name__}', origin)
+            return error(500, 'Authentication failed', origin)
         finally:
             conn.close()
 
@@ -382,109 +385,110 @@ def handle_callback(event: dict, origin: str) -> dict:
         return error(500, 'Yandex API error', origin)
     except Exception as e:
         print(f"[ERROR] Unexpected error in callback: {type(e).__name__}: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return error(500, f'Internal server error: {type(e).__name__}', origin)
+        return error(500, 'Authentication failed', origin)
 
 
 def handle_refresh(event: dict, origin: str) -> dict:
-    """Refresh access token."""
+    """Refresh access token using refresh token."""
     body_str = event.get('body', '{}')
     if event.get('isBase64Encoded'):
         body_str = base64.b64decode(body_str).decode('utf-8')
 
     try:
-        payload = json.loads(body_str)
+        payload = json.loads(body_str) if body_str else {}
     except json.JSONDecodeError:
         return error(400, 'Invalid JSON', origin)
 
     refresh_token = payload.get('refresh_token', '')
     if not refresh_token:
-        return error(400, 'refresh_token is required', origin)
-
-    try:
-        get_jwt_secret()
-    except ValueError:
-        return error(500, 'Server configuration error', origin)
+        return error(400, 'Refresh token required', origin)
 
     S = get_schema()
     conn = get_connection()
 
     try:
         cur = conn.cursor()
-        now = datetime.now(timezone.utc)
-
+        now = datetime.now(timezone.utc).isoformat()
+        
+        # Clean expired tokens
         cleanup_expired_tokens(cur, S)
 
+        # Find token
         token_hash = hash_token(refresh_token)
-
         cur.execute(
-            f"""SELECT rt.user_id, u.email, u.name, u.avatar_url, u.yandex_id
-                FROM {S}refresh_tokens rt
-                JOIN {S}users u ON u.id = rt.user_id
-                WHERE rt.token_hash = %s AND rt.expires_at > %s""",
-            (token_hash, now.isoformat())
+            f"""SELECT user_id, expires_at FROM {S}refresh_tokens 
+                WHERE token_hash = %s AND expires_at > %s""",
+            (token_hash, now)
         )
-
         row = cur.fetchone()
+
         if not row:
-            conn.commit()
             return error(401, 'Invalid or expired refresh token', origin)
 
-        user_id, email, name, avatar_url, yandex_id = row
+        user_id, _ = row
 
+        # Get user data
+        cur.execute(
+            f"SELECT email, name FROM {S}users WHERE id = %s",
+            (user_id,)
+        )
+        user_row = cur.fetchone()
+
+        if not user_row:
+            return error(401, 'User not found', origin)
+
+        email, name = user_row
+
+        # Create new access token
         access_token, expires_in = create_access_token(user_id, email, name)
-
-        conn.commit()
 
         return response(200, {
             'access_token': access_token,
-            'expires_in': expires_in,
-            'user': {
-                'id': user_id,
-                'email': email,
-                'name': name,
-                'avatar_url': avatar_url,
-                'yandex_id': yandex_id
-            }
+            'expires_in': expires_in
         }, origin)
 
-    except Exception:
-        return error(500, 'Internal server error', origin)
+    except Exception as e:
+        print(f"[ERROR] Refresh token error: {type(e).__name__}: {str(e)}")
+        return error(500, 'Token refresh failed', origin)
     finally:
         conn.close()
 
 
 def handle_logout(event: dict, origin: str) -> dict:
-    """Logout user by invalidating refresh token."""
+    """Logout user by revoking refresh token."""
     body_str = event.get('body', '{}')
     if event.get('isBase64Encoded'):
         body_str = base64.b64decode(body_str).decode('utf-8')
 
     try:
-        payload = json.loads(body_str)
+        payload = json.loads(body_str) if body_str else {}
     except json.JSONDecodeError:
         return error(400, 'Invalid JSON', origin)
 
     refresh_token = payload.get('refresh_token', '')
-    if refresh_token:
-        S = get_schema()
-        conn = get_connection()
-        try:
-            cur = conn.cursor()
-            token_hash = hash_token(refresh_token)
-            cur.execute(
-                f"DELETE FROM {S}refresh_tokens WHERE token_hash = %s",
-                (token_hash,)
-            )
-            cleanup_expired_tokens(cur, S)
-            conn.commit()
-        except Exception:
-            pass
-        finally:
-            conn.close()
+    if not refresh_token:
+        return response(200, {'message': 'Logged out'}, origin)
 
-    return response(200, {'message': 'Logged out'}, origin)
+    S = get_schema()
+    conn = get_connection()
+
+    try:
+        cur = conn.cursor()
+        token_hash = hash_token(refresh_token)
+        
+        cur.execute(
+            f"DELETE FROM {S}refresh_tokens WHERE token_hash = %s",
+            (token_hash,)
+        )
+        
+        conn.commit()
+        return response(200, {'message': 'Logged out'}, origin)
+
+    except Exception as e:
+        print(f"[ERROR] Logout error: {type(e).__name__}: {str(e)}")
+        return error(500, 'Logout failed', origin)
+    finally:
+        conn.close()
 
 
 # =============================================================================
@@ -492,30 +496,31 @@ def handle_logout(event: dict, origin: str) -> dict:
 # =============================================================================
 
 def handler(event: dict, context) -> dict:
-    """Main handler - routes to specific handlers based on action."""
-    origin = get_origin(event)
-    
-    print(f"[DEBUG] Received request: method={event.get('httpMethod')}, query={event.get('queryStringParameters')}")
-
-    if event.get('httpMethod') == 'OPTIONS':
-        headers = HEADERS.copy()
-        headers['Access-Control-Allow-Origin'] = origin if origin != '*' else '*'
-        return {'statusCode': 200, 'headers': headers, 'body': ''}
-
+    """Main entry point for Yandex OAuth authentication."""
+    method = event.get('httpMethod', 'GET')
     query = event.get('queryStringParameters', {}) or {}
-    action = query.get('action', '')
-    
+    action = query.get('action', 'auth-url')
+    origin = get_origin(event)
+
+    print(f"[DEBUG] Received request: method={method}, query={query}")
+
+    if method == 'OPTIONS':
+        return {
+            'statusCode': 200,
+            'headers': HEADERS,
+            'body': '',
+            'isBase64Encoded': False
+        }
+
     print(f"[DEBUG] Action: '{action}'")
 
-    handlers = {
-        'auth-url': handle_auth_url,
-        'callback': handle_callback,
-        'refresh': handle_refresh,
-        'logout': handle_logout,
-    }
-
-    if action not in handlers:
-        print(f"[ERROR] Unknown action: '{action}', available: {list(handlers.keys())}")
+    if action == 'auth-url' and method == 'GET':
+        return handle_auth_url(event, origin)
+    elif action == 'callback' and method == 'POST':
+        return handle_callback(event, origin)
+    elif action == 'refresh' and method == 'POST':
+        return handle_refresh(event, origin)
+    elif action == 'logout' and method == 'POST':
+        return handle_logout(event, origin)
+    else:
         return error(400, f'Unknown action: {action}', origin)
-
-    return handlers[action](event, origin)
