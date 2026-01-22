@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useYandexAuth } from '@/components/extensions/yandex-auth/useYandexAuth';
 import { useAuth } from '@/contexts/AuthContext';
-import Cookies from 'js-cookie';
 
 const YANDEX_AUTH_URL = 'https://functions.poehali.dev/ecb56210-8c2b-4f4e-aa4b-b5b742d25f6a';
 
