@@ -51,8 +51,19 @@
       console.log('[CLEANUP v2.1] Old token from localStorage:', authTokenLS ? authTokenLS.substring(0, 30) + '...' : 'none');
       console.log('[CLEANUP v2.1] Old token from cookie:', authTokenCookie ? authTokenCookie.substring(0, 30) + '...' : 'none');
       
-      // Clear ALL localStorage
-      localStorage.clear();
+      // Clear specific auth keys first (including refresh tokens)
+      var authKeys = [
+        'auth_token', 
+        'telegram_user', 
+        'yandex_user', 
+        'telegram_auth_refresh_token', 
+        'yandex_auth_refresh_token',
+        'refresh_token',
+        'user'
+      ];
+      for (var k = 0; k < authKeys.length; k++) {
+        localStorage.removeItem(authKeys[k]);
+      }
       
       // Set new version
       localStorage.setItem('auth_system_version', AUTH_SYSTEM_VERSION);
