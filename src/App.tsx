@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from "react";
+import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -6,7 +6,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { Layout } from "./components/Layout";
-import Cookies from "js-cookie";
 
 const Home = lazy(() => import("./pages/Home"));
 const EventsListPage = lazy(() => import("./pages/EventsListPage"));
@@ -57,26 +56,7 @@ const LoadingFallback = () => (
   </div>
 );
 
-const App = () => {
-  // Clean up old auth tokens on app start (one-time migration)
-  useEffect(() => {
-    const token = Cookies.get('auth_token') || localStorage.getItem('auth_token');
-    if (token && token.split('.').length !== 3) {
-      console.log('[App] Обнаружен старый невалидный токен, очищаем всё хранилище');
-      Cookies.remove('auth_token');
-      Cookies.remove('telegram_user');
-      Cookies.remove('yandex_user');
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('telegram_user');
-      localStorage.removeItem('yandex_user');
-      localStorage.removeItem('telegram_auth_refresh_token');
-      localStorage.removeItem('yandex_auth_refresh_token');
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('refresh_token');
-    }
-  }, []);
-
-  return (
+const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <TooltipProvider>

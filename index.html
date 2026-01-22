@@ -29,6 +29,45 @@
 
 <body>
 <div id="root"></div>
+
+<!-- CRITICAL: Clean up old invalid auth tokens BEFORE React loads -->
+<script>
+(function() {
+  try {
+    // Version of auth system - increment this to force cleanup on all clients
+    var AUTH_SYSTEM_VERSION = '2.0.0';
+    var currentVersion = localStorage.getItem('auth_system_version');
+    
+    // If version doesn't match or auth_token is invalid JWT, do full cleanup
+    var authToken = localStorage.getItem('auth_token');
+    var needsCleanup = currentVersion !== AUTH_SYSTEM_VERSION || (authToken && authToken.split('.').length !== 3);
+    
+    if (needsCleanup) {
+      console.log('[CLEANUP v2.0] Performing full auth storage cleanup');
+      
+      // Clear ALL localStorage
+      localStorage.clear();
+      
+      // Set new version
+      localStorage.setItem('auth_system_version', AUTH_SYSTEM_VERSION);
+      
+      // Clear ALL cookies
+      var cookies = document.cookie.split(';');
+      for (var i = 0; i < cookies.length; i++) {
+        var cookie = cookies[i];
+        var eqPos = cookie.indexOf('=');
+        var name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
+        document.cookie = name + '=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+      }
+      
+      console.log('[CLEANUP v2.0] Storage cleaned, version set to ' + AUTH_SYSTEM_VERSION);
+    }
+  } catch (e) {
+    console.error('[CLEANUP] Error:', e);
+  }
+})();
+</script>
+
 <script type="module" src="/src/main.tsx"></script>
 
 <!-- Yandex.Metrika counter -->
