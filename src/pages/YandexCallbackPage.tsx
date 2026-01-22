@@ -13,7 +13,7 @@ const YandexCallbackPage = () => {
 
   const yandexAuth = useYandexAuth({
     apiUrls: {
-      authUrl: `${YANDEX_AUTH_URL}?action=auth_url`,
+      authUrl: `${YANDEX_AUTH_URL}?action=auth-url`,
       callback: `${YANDEX_AUTH_URL}?action=callback`,
       refresh: `${YANDEX_AUTH_URL}?action=refresh`,
       logout: `${YANDEX_AUTH_URL}?action=logout`,
