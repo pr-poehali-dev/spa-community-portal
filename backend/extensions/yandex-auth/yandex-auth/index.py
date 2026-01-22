@@ -72,7 +72,7 @@ def get_jwt_secret() -> str:
 # JWT
 # =============================================================================
 
-def create_access_token(user_id: int, email: str | None = None) -> tuple[str, int]:
+def create_access_token(user_id: int, email: str | None = None, name: str | None = None) -> tuple[str, int]:
     """Create JWT access token."""
     secret = get_jwt_secret()
     expires_delta = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -81,12 +81,15 @@ def create_access_token(user_id: int, email: str | None = None) -> tuple[str, in
 
     payload = {
         'sub': str(user_id),
+        'user_id': user_id,
         'exp': expire,
         'iat': now,
         'type': 'access'
     }
     if email:
         payload['email'] = email
+    if name:
+        payload['name'] = name
 
     token = jwt.encode(payload, secret, algorithm='HS256')
     return token, int(expires_delta.total_seconds())
@@ -335,7 +338,7 @@ def handle_callback(event: dict, origin: str) -> dict:
                     )
                     user_id = cur.fetchone()[0]
 
-            access_token, expires_in = create_access_token(user_id, email)
+            access_token, expires_in = create_access_token(user_id, email, name)
             refresh_token = create_refresh_token()
             refresh_token_hash = hash_token(refresh_token)
             refresh_expires = (datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)).isoformat()
@@ -419,7 +422,7 @@ def handle_refresh(event: dict, origin: str) -> dict:
 
         user_id, email, name, avatar_url, yandex_id = row
 
-        access_token, expires_in = create_access_token(user_id, email)
+        access_token, expires_in = create_access_token(user_id, email, name)
 
         conn.commit()
 
