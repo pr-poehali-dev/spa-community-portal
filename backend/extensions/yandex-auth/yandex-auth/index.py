@@ -260,18 +260,25 @@ def handle_callback(event: dict, origin: str) -> dict:
         return error(500, 'Server configuration error', origin)
 
     try:
-        get_jwt_secret()
-    except ValueError:
-        return error(500, 'Server configuration error', origin)
+        jwt_secret = get_jwt_secret()
+        print(f"[DEBUG] JWT secret length: {len(jwt_secret)}")
+    except ValueError as e:
+        print(f"[ERROR] JWT secret validation failed: {e}")
+        return error(500, 'Server configuration error: JWT_SECRET', origin)
 
     try:
+        print(f"[DEBUG] Exchanging code for token...")
         token_data = exchange_code_for_token(code, client_id, client_secret)
+        print(f"[DEBUG] Token exchange result: {list(token_data.keys())}")
 
         if 'error' in token_data:
+            print(f"[ERROR] Yandex token error: {token_data}")
             return error(400, token_data.get('error_description', 'Yandex auth failed'), origin)
 
         yandex_access_token = token_data.get('access_token')
+        print(f"[DEBUG] Getting user info from Yandex...")
         user_info = get_yandex_user_info(yandex_access_token)
+        print(f"[DEBUG] User info: id={user_info.get('id')}, email={user_info.get('default_email')}")
 
         yandex_id = str(user_info.get('id', ''))
         email = user_info.get('default_email', '')
@@ -364,16 +371,21 @@ def handle_callback(event: dict, origin: str) -> dict:
                 }
             }, origin)
 
-        except Exception:
+        except Exception as e:
+            print(f"[ERROR] Database error: {type(e).__name__}: {str(e)}")
             conn.rollback()
-            return error(500, 'Database error', origin)
+            return error(500, f'Database error: {type(e).__name__}', origin)
         finally:
             conn.close()
 
-    except HTTPError:
+    except HTTPError as e:
+        print(f"[ERROR] Yandex API HTTP error: {e}")
         return error(500, 'Yandex API error', origin)
-    except Exception:
-        return error(500, 'Internal server error', origin)
+    except Exception as e:
+        print(f"[ERROR] Unexpected error in callback: {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return error(500, f'Internal server error: {type(e).__name__}', origin)
 
 
 def handle_refresh(event: dict, origin: str) -> dict:
