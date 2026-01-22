@@ -36,17 +36,12 @@ HEADERS = {
 
 def get_connection():
     """Get database connection."""
-    conn = psycopg2.connect(os.environ['DATABASE_URL'])
-    # Устанавливаем правильную схему для сессии
-    cur = conn.cursor()
-    cur.execute("SET search_path TO t_p13705114_spa_community_portal, public")
-    cur.close()
-    return conn
+    return psycopg2.connect(os.environ['DATABASE_URL'])
 
 
 def get_schema() -> str:
-    """Get database schema prefix - теперь не используется, т.к. search_path установлен."""
-    return ""
+    """Get database schema prefix with quotes for proper escaping."""
+    return '"t_p13705114_spa_community_portal".'
 
 
 def cleanup_expired_tokens(cur, schema: str) -> None:
