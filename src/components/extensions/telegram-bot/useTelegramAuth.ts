@@ -201,15 +201,13 @@ export function useTelegramAuth(options: UseTelegramAuthOptions): UseTelegramAut
         return false;
       }
 
-      // Set auth data and save to unified storage
+      // Set auth data and save to localStorage
       setAccessToken(data.access_token);
       setUser(data.user);
       setStoredRefreshToken(data.refresh_token);
       
-      // Save to cookies and localStorage for unified auth system
       if (typeof window !== 'undefined') {
         localStorage.setItem('auth_token', data.access_token);
-        document.cookie = `auth_token=${data.access_token}; path=/; max-age=900`;
       }
       
       scheduleRefresh(data.expires_in, refreshTokenFn);
