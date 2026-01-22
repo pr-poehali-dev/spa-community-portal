@@ -214,8 +214,11 @@ def handle_auth_url(event: dict, origin: str) -> dict:
     """Generate Yandex authorization URL."""
     client_id = os.environ.get('YANDEX_CLIENT_ID', '')
     redirect_uri = os.environ.get('YANDEX_REDIRECT_URI', '')
+    
+    print(f"[DEBUG] auth-url: client_id={client_id[:10] if client_id else 'EMPTY'}..., redirect_uri={redirect_uri}")
 
     if not client_id or not redirect_uri:
+        print(f"[ERROR] Missing config: client_id={bool(client_id)}, redirect_uri={bool(redirect_uri)}")
         return error(500, 'Server configuration error', origin)
 
     state = secrets.token_urlsafe(16)
@@ -477,6 +480,8 @@ def handle_logout(event: dict, origin: str) -> dict:
 def handler(event: dict, context) -> dict:
     """Main handler - routes to specific handlers based on action."""
     origin = get_origin(event)
+    
+    print(f"[DEBUG] Received request: method={event.get('httpMethod')}, query={event.get('queryStringParameters')}")
 
     if event.get('httpMethod') == 'OPTIONS':
         headers = HEADERS.copy()
@@ -485,6 +490,8 @@ def handler(event: dict, context) -> dict:
 
     query = event.get('queryStringParameters', {}) or {}
     action = query.get('action', '')
+    
+    print(f"[DEBUG] Action: '{action}'")
 
     handlers = {
         'auth-url': handle_auth_url,
@@ -494,6 +501,7 @@ def handler(event: dict, context) -> dict:
     }
 
     if action not in handlers:
+        print(f"[ERROR] Unknown action: '{action}', available: {list(handlers.keys())}")
         return error(400, f'Unknown action: {action}', origin)
 
     return handlers[action](event, origin)
