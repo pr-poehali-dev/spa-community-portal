@@ -38,7 +38,6 @@ const TelegramCallbackPage = () => {
 
     const authenticate = async () => {
       try {
-        // Вызываем API напрямую, чтобы получить токен и user из ответа
         const response = await fetch(`${TELEGRAM_AUTH_URL}?action=exchange`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -55,7 +54,6 @@ const TelegramCallbackPage = () => {
             user: data.user
           });
 
-          // Сохраняем в localStorage
           localStorage.setItem('auth_token', data.access_token);
           localStorage.setItem('telegram_user', JSON.stringify(data.user));
           
@@ -63,7 +61,6 @@ const TelegramCallbackPage = () => {
             localStorage.setItem('telegram_auth_refresh_token', data.refresh_token);
           }
 
-          // Обновляем AuthContext (force reload)
           await checkAuth(true);
 
           setStatus('success');
@@ -88,7 +85,7 @@ const TelegramCallbackPage = () => {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [searchParams, checkAuth, navigate]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-amber-50 flex items-center justify-center p-4">

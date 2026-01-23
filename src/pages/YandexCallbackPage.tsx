@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useYandexAuth } from '@/components/extensions/yandex-auth/useYandexAuth';
 import { useAuth } from '@/contexts/AuthContext';
@@ -9,6 +9,7 @@ const YandexCallbackPage = () => {
   const navigate = useNavigate();
   const { checkAuth } = useAuth();
   const [error, setError] = useState<string | null>(null);
+  const processed = useRef(false);
 
   const yandexAuth = useYandexAuth({
     apiUrls: {
@@ -17,15 +18,15 @@ const YandexCallbackPage = () => {
       refresh: `${YANDEX_AUTH_URL}?action=refresh`,
       logout: `${YANDEX_AUTH_URL}?action=logout`,
     },
-    onAuthChange: async (user) => {
-      if (user) {
-        await checkAuth(true);
-        navigate('/account', { replace: true });
-      }
+    onAuthChange: async () => {
+      // Обработка происходит в useEffect
     }
   });
 
   useEffect(() => {
+    if (processed.current) return;
+    processed.current = true;
+
     const handleCallback = async () => {
       try {
         const params = new URLSearchParams(window.location.search);
@@ -33,17 +34,14 @@ const YandexCallbackPage = () => {
         
         const success = await yandexAuth.handleCallback(params);
         console.log('[YandexCallback] Результат handleCallback:', success);
-        console.log('[YandexCallback] Access token:', yandexAuth.accessToken?.substring(0, 30) + '...');
-        console.log('[YandexCallback] User:', yandexAuth.user);
         
         if (success) {
-          console.log('[YandexCallback] Авторизация успешна, токен уже сохранён в hook');
-          console.log('[YandexCallback] Вызываю checkAuth(true)');
+          console.log('[YandexCallback] Авторизация успешна');
           await checkAuth(true);
           console.log('[YandexCallback] Переход на /account');
           navigate('/account', { replace: true });
         } else {
-          console.error('[YandexCallback] success или accessToken false/null');
+          console.error('[YandexCallback] Ошибка авторизации');
           setError('Ошибка авторизации через Яндекс');
           setTimeout(() => navigate('/login', { replace: true }), 2000);
         }
@@ -55,7 +53,7 @@ const YandexCallbackPage = () => {
     };
 
     handleCallback();
-  }, []);
+  }, [yandexAuth, checkAuth, navigate]);
 
   if (error) {
     return (
