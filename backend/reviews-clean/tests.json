@@ -1,0 +1,28 @@
+{
+  "tests": [
+    {
+      "name": "Get reviews for bath",
+      "method": "GET",
+      "path": "/?entity_type=bath&entity_id=1",
+      "expectedStatus": 200,
+      "expectedBody": {
+        "reviews": "array",
+        "stats": {
+          "average_rating": "number",
+          "total_count": "number"
+        }
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Get reviews - missing parameters",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 400,
+      "expectedBody": {
+        "error": "string"
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}
