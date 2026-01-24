@@ -1,76 +1,24 @@
-import { useEffect, useState } from 'react';
 import { useParams, Navigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import Icon from '@/components/ui/icon';
-import { getMasterBySlug, Master } from '@/lib/api';
+import { mockMasters } from '@/data/mockData';
 
 const MasterDetailPage = () => {
   const { slug } = useParams();
-  const [master, setMaster] = useState<Master | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [bookingData, setBookingData] = useState({
-    name: '',
-    phone: '',
-    telegram: '',
-    service: '',
-    date: '',
-    message: ''
-  });
-
-  useEffect(() => {
-    let isMounted = true;
-
-    if (slug) {
-      setLoading(true);
-      getMasterBySlug(slug)
-        .then(data => {
-          if (isMounted) setMaster(data);
-        })
-        .catch(err => {
-          if (isMounted) console.error(err);
-        })
-        .finally(() => {
-          if (isMounted) setLoading(false);
-        });
-    }
-
-    return () => {
-      isMounted = false;
-    };
-  }, [slug]);
-
-  const handleBooking = () => {
-    console.log('Booking master:', { master, data: bookingData });
-    alert('Заявка отправлена! Мы свяжемся с вами для подтверждения.');
-    setBookingData({ name: '', phone: '', telegram: '', service: '', date: '', message: '' });
-    setDialogOpen(false);
-  };
-
-  if (loading) {
-    return (
-      <div className="container mx-auto px-4 py-12 flex justify-center">
-        <p className="text-muted-foreground">Загрузка...</p>
-      </div>
-    );
-  }
+  const master = mockMasters.find(m => m.slug === slug);
   
   if (!master) {
     return <Navigate to="/404" replace />;
-  };
+  }
 
   return (
     <div className="animate-fade-in">
       <div 
         className="relative h-[50vh] bg-cover bg-center"
-        style={{ backgroundImage: `url(${master.avatar_url})` }}
+        style={{ backgroundImage: `url(${master.avatar})` }}
       >
         <div className="absolute inset-0 bg-black/50" />
         <div className="absolute inset-0 flex items-center justify-center">
@@ -87,7 +35,7 @@ const MasterDetailPage = () => {
               <div className="flex items-center gap-2">
                 <Icon name="Star" size={20} className="text-yellow-400 fill-yellow-400" />
                 <span className="font-semibold">{master.rating}</span>
-                <span className="text-white/80">({master.reviews_count} отзывов)</span>
+                <span className="text-white/80">({master.reviewsCount} отзывов)</span>
               </div>
               <div className="flex items-center gap-2">
                 <Icon name="Award" size={20} />
@@ -131,22 +79,6 @@ const MasterDetailPage = () => {
                     </div>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="font-serif text-2xl">Философия мастера</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <blockquote className="border-l-4 border-primary pl-4 italic text-muted-foreground">
-                  "Баня — это не просто мытьё, это ритуал очищения тела и души. 
-                  Каждый сеанс — это уникальное путешествие, где тепло, пар и традиции 
-                  соединяются в гармонии."
-                </blockquote>
-                <p className="text-muted-foreground mt-4 leading-relaxed">
-                  С уважением к древним традициям и современным подходом к здоровью.
-                </p>
               </CardContent>
             </Card>
 
@@ -197,13 +129,6 @@ const MasterDetailPage = () => {
                       </p>
                     </div>
                   </div>
-
-                  <Separator />
-
-                  <div className="text-center pt-4">
-                    <p className="text-sm text-muted-foreground mb-2">Всего отзывов: {master.reviews_count}</p>
-                    <Button variant="outline" size="sm">Показать все отзывы</Button>
-                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -226,100 +151,9 @@ const MasterDetailPage = () => {
                   ))}
                 </div>
 
-                <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button className="w-full" size="lg">
-                      Записаться к мастеру
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-                    <DialogHeader>
-                      <DialogTitle className="font-serif text-2xl">Запись к {master.name}</DialogTitle>
-                      <DialogDescription>
-                        Заполните форму для бронирования сеанса
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                      <div>
-                        <Label htmlFor="name">Имя *</Label>
-                        <Input 
-                          id="name" 
-                          value={bookingData.name}
-                          onChange={(e) => setBookingData({...bookingData, name: e.target.value})}
-                          placeholder="Ваше имя"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="phone">Телефон *</Label>
-                        <Input 
-                          id="phone" 
-                          value={bookingData.phone}
-                          onChange={(e) => setBookingData({...bookingData, phone: e.target.value})}
-                          placeholder="+7 (999) 123-45-67"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="telegram">Telegram</Label>
-                        <Input 
-                          id="telegram" 
-                          value={bookingData.telegram}
-                          onChange={(e) => setBookingData({...bookingData, telegram: e.target.value})}
-                          placeholder="@username"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="service">Услуга *</Label>
-                        <select
-                          id="service"
-                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                          value={bookingData.service}
-                          onChange={(e) => setBookingData({...bookingData, service: e.target.value})}
-                        >
-                          <option value="">Выберите услугу</option>
-                          {master.services.map((service, index) => (
-                            <option key={index} value={service.name}>
-                              {service.name} - {service.price} ₽ ({service.duration} мин)
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <Label htmlFor="date">Желаемая дата *</Label>
-                        <Input 
-                          id="date" 
-                          type="date"
-                          value={bookingData.date}
-                          onChange={(e) => setBookingData({...bookingData, date: e.target.value})}
-                          min={new Date().toISOString().split('T')[0]}
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="message">Комментарий</Label>
-                        <Textarea 
-                          id="message" 
-                          value={bookingData.message}
-                          onChange={(e) => setBookingData({...bookingData, message: e.target.value})}
-                          placeholder="Дополнительные пожелания"
-                          rows={3}
-                        />
-                      </div>
-                      <div className="bg-muted p-4 rounded-lg">
-                        <p className="text-sm font-medium mb-2">Детали бронирования:</p>
-                        <p className="text-sm text-muted-foreground">
-                          Мастер: {master.name}<br/>
-                          {bookingData.service && `Услуга: ${bookingData.service}`}
-                        </p>
-                      </div>
-                      <Button 
-                        onClick={handleBooking} 
-                        className="w-full"
-                        disabled={!bookingData.name || !bookingData.phone || !bookingData.service || !bookingData.date}
-                      >
-                        Подтвердить запись
-                      </Button>
-                    </div>
-                  </DialogContent>
-                </Dialog>
+                <Button className="w-full" size="lg">
+                  Записаться к мастеру
+                </Button>
 
                 <Separator />
 
