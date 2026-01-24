@@ -4,8 +4,11 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "./contexts/AuthContext";
 import { Layout } from "./components/Layout";
 import Home from "./pages/Home";
+import Auth from "./pages/Auth";
+import Profile from "./pages/Profile";
 import EventsListPage from "./pages/EventsListPage";
 import EventDetailPage from "./pages/EventDetailPage";
 import BathsListPage from "./pages/BathsListPage";
@@ -24,7 +27,8 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Layout>
+        <AuthProvider>
+          <Layout>
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/events" element={<EventsListPage />} />
@@ -35,9 +39,12 @@ const App = () => (
             <Route path="/masters/:slug" element={<MasterDetailPage />} />
             <Route path="/blog" element={<BlogPage />} />
             <Route path="/about" element={<AboutPage />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/profile" element={<Profile />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Layout>
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

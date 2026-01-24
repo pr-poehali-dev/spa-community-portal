@@ -1,5 +1,7 @@
 import { ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
 
 interface LayoutProps {
@@ -8,6 +10,7 @@ interface LayoutProps {
 
 export const Layout = ({ children }: LayoutProps) => {
   const location = useLocation();
+  const { user, loading } = useAuth();
   
   const isActive = (path: string) => {
     if (path === '/' && location.pathname === '/') return true;
@@ -23,7 +26,7 @@ export const Layout = ({ children }: LayoutProps) => {
             <Link to="/">
               <h1 className="text-2xl md:text-3xl font-serif font-bold text-primary">спарком.рф</h1>
             </Link>
-            <div className="flex gap-2 md:gap-6">
+            <div className="flex items-center gap-2 md:gap-6">
               <Link
                 to="/"
                 className={`text-sm md:text-base font-medium transition-colors ${
@@ -72,6 +75,30 @@ export const Layout = ({ children }: LayoutProps) => {
               >
                 О нас
               </Link>
+              {!loading && (
+                <>
+                  {user ? (
+                    <Link to="/profile">
+                      <Button variant="outline" size="sm" className="hidden md:flex items-center gap-2">
+                        <Icon name="User" size={16} />
+                        {user.name}
+                      </Button>
+                      <Button variant="outline" size="icon" className="md:hidden">
+                        <Icon name="User" size={16} />
+                      </Button>
+                    </Link>
+                  ) : (
+                    <Link to="/auth">
+                      <Button size="sm" className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 hidden md:flex">
+                        Войти
+                      </Button>
+                      <Button size="icon" className="md:hidden bg-gradient-to-r from-amber-600 to-orange-600">
+                        <Icon name="User" size={16} />
+                      </Button>
+                    </Link>
+                  )}
+                </>
+              )}
             </div>
           </div>
         </div>

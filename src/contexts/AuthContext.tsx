@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
-const AUTH_API_URL = 'https://functions.poehali.dev/fdba6fa3-4998-4f82-ac05-2dd07a9acac3';
+const AUTH_API_URL = 'https://functions.poehali.dev/5e8337ff-5f62-4937-8929-47c5902da077';
 
 export interface User {
   id: number;
@@ -48,49 +48,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
-    // Validate JWT format (3 parts: header.payload.signature)
-    const parts = storedToken.split('.');
-    if (parts.length !== 3) {
-      console.log('[Auth] Invalid token format, clearing');
-      clearTokenStorage();
-      setToken(null);
-      setUser(null);
-      setLoading(false);
-      return;
-    }
-
     try {
-      // Decode JWT payload
-      const payload = JSON.parse(atob(parts[1]));
-      
-      // Check expiration
-      if (payload.exp && payload.exp * 1000 <= Date.now()) {
-        console.log('[Auth] Token expired');
-        clearTokenStorage();
-        setToken(null);
-        setUser(null);
-        setLoading(false);
-        return;
-      }
+      const response = await fetch(`${AUTH_API_URL}?action=me`, {
+        headers: {
+          'Authorization': `Bearer ${storedToken}`
+        }
+      });
 
-      // Valid token - restore user from payload
-      if (payload.user_id && payload.email) {
-        setUser({
-          id: payload.user_id,
-          email: payload.email,
-          name: payload.name || '',
-          role: payload.role || 'participant'
-        });
+      if (response.ok) {
+        const data = await response.json();
+        setUser(data.user);
         setToken(storedToken);
         console.log('[Auth] Session restored', forceReload ? '(force reload)' : '');
       } else {
-        // Invalid payload
         clearTokenStorage();
         setToken(null);
         setUser(null);
       }
     } catch (error) {
-      console.error('[Auth] Token decode error:', error);
+      console.error('[Auth] Check failed:', error);
       clearTokenStorage();
       setToken(null);
       setUser(null);
@@ -100,7 +76,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const login = async (email: string, password: string) => {
-    const response = await fetch(`${AUTH_API_URL}/login`, {
+    const response = await fetch(`${AUTH_API_URL}?action=login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password })
@@ -118,7 +94,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const register = async (email: string, password: string, name: string, phone?: string, telegram?: string) => {
-    const response = await fetch(`${AUTH_API_URL}/register`, {
+    const response = await fetch(`${AUTH_API_URL}?action=register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password, name, phone, telegram })
@@ -130,8 +106,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
     const data = await response.json();
-    setTokenStorage(data.access_token);
-    setToken(data.access_token);
+    setTokenStorage(data.token);
+    setToken(data.token);
     setUser(data.user);
   };
 
