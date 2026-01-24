@@ -1,0 +1,37 @@
+{
+  "tests": [
+    {
+      "name": "Get events list",
+      "method": "GET",
+      "path": "/?resource=events",
+      "expectedStatus": 200,
+      "expectedBody": {
+        "events": "array",
+        "total": "number"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Get baths list",
+      "method": "GET",
+      "path": "/?resource=baths",
+      "expectedStatus": 200,
+      "expectedBody": {
+        "baths": "array",
+        "total": "number"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Get masters list",
+      "method": "GET",
+      "path": "/?resource=masters",
+      "expectedStatus": 200,
+      "expectedBody": {
+        "masters": "array",
+        "total": "number"
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}
