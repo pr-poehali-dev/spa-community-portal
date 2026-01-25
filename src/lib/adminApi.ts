@@ -1,4 +1,4 @@
-const ADMIN_API_URL = 'https://functions.poehali.dev/b6fbba96-cc0b-4f59-b94d-e60ab18fe1b0';
+const ADMIN_API_URL = 'https://functions.poehali.dev/4d4444ef-63b0-4b5a-8985-915f1ad69e1c';
 
 async function request(method: string, resource: string, data?: any, id?: string | number) {
   const url = new URL(ADMIN_API_URL);
