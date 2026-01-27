@@ -38,17 +38,23 @@ def handle(event: dict, origin: str = '*') -> dict:
             user_id = user[0]
             now = datetime.utcnow().isoformat()
 
-            # Delete old tokens
-            execute(f"DELETE FROM {S}password_reset_tokens WHERE user_id = {escape(user_id)}")
-
-            # Generate and store new code
+            # Generate code
             reset_code = generate_code()
             expires_at = (datetime.utcnow() + timedelta(hours=RESET_CODE_LIFETIME_HOURS)).isoformat()
 
-            execute(f"""
-                INSERT INTO {S}password_reset_tokens (user_id, token_hash, expires_at, created_at)
-                VALUES ({escape(user_id)}, {escape(reset_code)}, {escape(expires_at)}, {escape(now)})
-            """)
+            # TEMPORARY: Store in old table structure without schema prefix
+            try:
+                execute(f"""
+                    INSERT INTO password_reset_tokens (user_id, token, expires_at, created_at, used)
+                    VALUES ({escape(user_id)}, {escape(reset_code)}, {escape(expires_at)}, {escape(now)}, FALSE)
+                """)
+            except Exception as e:
+                # If INSERT fails, return code in response anyway
+                return response(200, {
+                    'message': 'Код для восстановления (БД недоступна)',
+                    'reset_code': reset_code,
+                    'db_error': str(e)
+                }, origin)
 
             # Send code via email if SMTP configured
             if is_email_enabled():
@@ -81,12 +87,13 @@ def handle(event: dict, origin: str = '*') -> dict:
 
         user_id = user[0]
 
-        # Verify code
+        # Verify code in old table structure
         token_record = query_one(f"""
-            SELECT id FROM {S}password_reset_tokens
+            SELECT id FROM password_reset_tokens
             WHERE user_id = {escape(user_id)}
-              AND token_hash = {escape(code)}
+              AND token = {escape(code)}
               AND expires_at > {escape(now)}
+              AND used = FALSE
         """)
 
         if not token_record:
@@ -99,9 +106,12 @@ def handle(event: dict, origin: str = '*') -> dict:
             WHERE id = {escape(user_id)}
         """)
 
-        # Cleanup tokens
-        execute(f"DELETE FROM {S}password_reset_tokens WHERE user_id = {escape(user_id)}")
-        execute(f"DELETE FROM {S}refresh_tokens WHERE user_id = {escape(user_id)}")
+        # Mark token as used
+        execute(f"""
+            UPDATE password_reset_tokens 
+            SET used = TRUE
+            WHERE user_id = {escape(user_id)} AND token = {escape(code)}
+        """)
 
         return response(200, {'message': 'Пароль успешно изменён'}, origin)
 

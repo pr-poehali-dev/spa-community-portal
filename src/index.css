@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Cormorant:wght@400;500;600;700&family=Open+Sans:wght@400;500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -6,35 +6,35 @@
 
 @layer base {
   :root {
-    --background: 36 50% 96%;
-    --foreground: 0 0% 17%;
+    --background: 0 0% 100%;
+    --foreground: 0 0% 10%;
 
-    --card: 36 45% 98%;
-    --card-foreground: 0 0% 17%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 10%;
 
-    --popover: 36 45% 98%;
-    --popover-foreground: 0 0% 17%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 10%;
 
-    --primary: 25 65% 48%;
-    --primary-foreground: 36 50% 96%;
+    --primary: 0 0% 10%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 36 30% 88%;
-    --secondary-foreground: 0 0% 17%;
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 10%;
 
-    --muted: 36 25% 90%;
+    --muted: 0 0% 96%;
     --muted-foreground: 0 0% 45%;
 
-    --accent: 25 55% 55%;
-    --accent-foreground: 36 50% 96%;
+    --accent: 0 0% 10%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 36 50% 96%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 36 20% 85%;
-    --input: 36 20% 85%;
-    --ring: 25 65% 48%;
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 0 0% 10%;
 
-    --radius: 1rem;
+    --radius: 0.5rem;
 
     --sidebar-background: 36 45% 98%;
     --sidebar-foreground: 0 0% 17%;
@@ -91,8 +91,9 @@
   }
 
   body {
-    @apply bg-background text-foreground;
-    font-family: "Open Sans", sans-serif;
+    @apply bg-background text-foreground antialiased;
+    font-family: "Inter", sans-serif;
+    letter-spacing: -0.01em;
   }
 
   h1,
@@ -101,6 +102,8 @@
   h4,
   h5,
   h6 {
-    font-family: "Cormorant", serif;
+    font-family: "Playfair Display", serif;
+    letter-spacing: -0.02em;
+    font-weight: 600;
   }
 }

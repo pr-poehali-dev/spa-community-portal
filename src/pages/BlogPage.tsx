@@ -31,20 +31,27 @@ export default function BlogPage() {
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchPosts();
-  }, []);
+    let isMounted = true;
 
-  const fetchPosts = async () => {
-    try {
-      const response = await fetch('https://functions.poehali.dev/75e27ae0-e41a-4c42-8f6a-0d66ca396765?action=list&draft=false');
-      const data = await response.json();
-      setPosts(data.posts || []);
-    } catch (error) {
-      console.error('Failed to fetch posts:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    const fetchPosts = async () => {
+      if (isMounted) setLoading(true);
+      try {
+        const response = await fetch('https://functions.poehali.dev/75e27ae0-e41a-4c42-8f6a-0d66ca396765?action=list&draft=false');
+        const data = await response.json();
+        if (isMounted) setPosts(data.posts || []);
+      } catch (error) {
+        if (isMounted) console.error('Failed to fetch posts:', error);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    fetchPosts();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const allTags = Array.from(new Set(posts.flatMap(post => post.tags)));
 

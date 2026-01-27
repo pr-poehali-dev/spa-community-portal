@@ -29,12 +29,25 @@ const BathDetailPage = () => {
   });
 
   useEffect(() => {
+    let isMounted = true;
+    
     if (slug) {
+      setLoading(true);
       getBathBySlug(slug)
-        .then(data => setBath(data))
-        .catch(console.error)
-        .finally(() => setLoading(false));
+        .then(data => {
+          if (isMounted) setBath(data);
+        })
+        .catch(err => {
+          if (isMounted) console.error(err);
+        })
+        .finally(() => {
+          if (isMounted) setLoading(false);
+        });
     }
+    
+    return () => {
+      isMounted = false;
+    };
   }, [slug]);
 
   const handleBooking = () => {

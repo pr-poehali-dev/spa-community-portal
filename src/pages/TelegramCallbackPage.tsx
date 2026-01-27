@@ -18,7 +18,7 @@ const TelegramCallbackPage = () => {
 
   const telegramAuth = useTelegramAuth({
     apiUrls: {
-      callback: `${TELEGRAM_AUTH_URL}?action=callback`,
+      callback: `${TELEGRAM_AUTH_URL}?action=exchange`,
       refresh: `${TELEGRAM_AUTH_URL}?action=refresh`,
       logout: `${TELEGRAM_AUTH_URL}?action=logout`,
     },
@@ -40,10 +40,10 @@ const TelegramCallbackPage = () => {
     const authenticate = async () => {
       try {
         // Вызываем API напрямую, чтобы получить токен и user из ответа
-        const response = await fetch(`${TELEGRAM_AUTH_URL}?action=callback`, {
+        const response = await fetch(`${TELEGRAM_AUTH_URL}?action=exchange`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token }),
+          body: JSON.stringify({ auth_token: token }),
         });
 
         if (cancelled) return;

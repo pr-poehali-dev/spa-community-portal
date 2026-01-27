@@ -312,23 +312,52 @@ def create_user(conn, data):
     return {'success': True, 'id': user_id}
 
 def update_user(conn, user_id, data):
+    """Update user - only updates fields that are provided"""
     cursor = conn.cursor()
-    cursor.execute(
-        """UPDATE t_p13705114_spa_community_portal.users SET name=%s, phone=%s, telegram=%s, role=%s, is_active=%s,
-           updated_at=CURRENT_TIMESTAMP WHERE id=%s""",
-        (data.get('name'), data.get('phone'), data.get('telegram'),
-         data.get('role'), data.get('is_active'), user_id)
-    )
+    
+    # Build dynamic UPDATE query for only provided fields
+    update_fields = []
+    update_values = []
+    
+    if 'name' in data:
+        update_fields.append('name = %s')
+        update_values.append(data['name'])
+    if 'phone' in data:
+        update_fields.append('phone = %s')
+        update_values.append(data['phone'])
+    if 'telegram' in data:
+        update_fields.append('telegram = %s')
+        update_values.append(data['telegram'])
+    if 'role' in data:
+        update_fields.append('role = %s')
+        update_values.append(data['role'])
+    if 'is_active' in data:
+        update_fields.append('is_active = %s')
+        update_values.append(data['is_active'])
+    
+    if not update_fields:
+        cursor.close()
+        return {'success': True, 'message': 'No fields to update'}
+    
+    update_fields.append('updated_at = CURRENT_TIMESTAMP')
+    update_values.append(user_id)
+    
+    query = f"UPDATE t_p13705114_spa_community_portal.users SET {', '.join(update_fields)} WHERE id = %s"
+    cursor.execute(query, tuple(update_values))
     conn.commit()
     cursor.close()
     return {'success': True}
 
 def delete_user(conn, user_id):
+    """Soft delete - mark user as inactive instead of deleting (due to foreign key constraints)"""
     cursor = conn.cursor()
-    cursor.execute("DELETE FROM t_p13705114_spa_community_portal.users WHERE id=%s", (user_id,))
+    cursor.execute(
+        "UPDATE t_p13705114_spa_community_portal.users SET is_active = FALSE WHERE id=%s",
+        (user_id,)
+    )
     conn.commit()
     cursor.close()
-    return {'success': True}
+    return {'success': True, 'message': 'Пользователь деактивирован'}
 
 def get_all_bookings(conn):
     cursor = conn.cursor()

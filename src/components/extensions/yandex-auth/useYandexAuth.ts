@@ -274,15 +274,16 @@ export function useYandexAuth(options: UseYandexAuthOptions): UseYandexAuthRetur
         // Clear temporary storage
         clearStoredState();
 
-        // Set auth data and save to localStorage
+        // Set auth data and save to unified storage
         console.log('[useYandexAuth] Устанавливаю access_token и user в state');
         setAccessToken(data.access_token);
         setUser(data.user);
         setStoredRefreshToken(data.refresh_token);
         
-        // Save to localStorage for unified auth system
+        // Save to cookies and localStorage for unified auth system
         if (typeof window !== 'undefined') {
           localStorage.setItem('auth_token', data.access_token);
+          document.cookie = `auth_token=${data.access_token}; path=/; max-age=900`;
         }
         
         scheduleRefresh(data.expires_in, refreshTokenFn);

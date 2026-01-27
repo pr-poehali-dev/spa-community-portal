@@ -26,12 +26,25 @@ const MasterDetailPage = () => {
   });
 
   useEffect(() => {
+    let isMounted = true;
+
     if (slug) {
+      setLoading(true);
       getMasterBySlug(slug)
-        .then(data => setMaster(data))
-        .catch(console.error)
-        .finally(() => setLoading(false));
+        .then(data => {
+          if (isMounted) setMaster(data);
+        })
+        .catch(err => {
+          if (isMounted) console.error(err);
+        })
+        .finally(() => {
+          if (isMounted) setLoading(false);
+        });
     }
+
+    return () => {
+      isMounted = false;
+    };
   }, [slug]);
 
   const handleBooking = () => {

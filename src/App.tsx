@@ -21,6 +21,7 @@ const BlogEditorPage = lazy(() => import("./pages/BlogEditorPage"));
 const AboutPage = lazy(() => import("./pages/AboutPage"));
 const LoginPage = lazy(() => import("./pages/LoginPage"));
 const TelegramCallbackPage = lazy(() => import("./pages/TelegramCallbackPage"));
+const YandexCallbackPage = lazy(() => import("./pages/YandexCallbackPage"));
 const ForgotPasswordPage = lazy(() => import("./pages/ForgotPasswordPage"));
 const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
@@ -39,7 +40,15 @@ const ApplyRolePage = lazy(() => import("./pages/ApplyRolePage"));
 const AccountPage = lazy(() => import("./pages/AccountPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1,
+      staleTime: 5 * 60 * 1000,
+    },
+  },
+});
 
 const LoadingFallback = () => (
   <div className="min-h-screen flex items-center justify-center">
@@ -84,6 +93,7 @@ const App = () => (
               <Route path="/about" element={<Layout><AboutPage /></Layout>} />
               <Route path="/login" element={<Layout><LoginPage /></Layout>} />
               <Route path="/auth/telegram/callback" element={<TelegramCallbackPage />} />
+              <Route path="/auth/yandex/callback" element={<YandexCallbackPage />} />
               <Route path="/forgot-password" element={<Layout><ForgotPasswordPage /></Layout>} />
               <Route path="/reset-password" element={<Layout><ResetPasswordPage /></Layout>} />
               <Route path="/account" element={<Layout><AccountPage /></Layout>} />
