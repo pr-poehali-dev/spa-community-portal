@@ -1,0 +1,26 @@
+{
+  "tests": [
+    {
+      "name": "Get calendar for current month",
+      "method": "GET",
+      "path": "/?endpoint=calendar",
+      "expectedStatus": 200,
+      "expectedBody": {
+        "month": "string",
+        "calendar": "array"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Get day schedule",
+      "method": "GET",
+      "path": "/?endpoint=day&date=2026-01-20",
+      "expectedStatus": 200,
+      "expectedBody": {
+        "date": "string",
+        "schedules": "array"
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}

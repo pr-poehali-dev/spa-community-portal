@@ -24,11 +24,7 @@ def send_email(to_email: str, subject: str, html_body: str, text_body: str) -> b
     smtp_password = os.environ.get('SMTP_PASSWORD', '')
     smtp_from = os.environ.get('SMTP_FROM', smtp_user)
 
-    print(f"[EMAIL] Attempting to send email to {to_email}")
-    print(f"[EMAIL] SMTP: {smtp_host}:{smtp_port}, User: {smtp_user}")
-
     if not smtp_user or not smtp_password:
-        print("[EMAIL] ERROR: SMTP credentials not configured")
         return False
 
     msg = MIMEMultipart('alternative')
@@ -40,36 +36,12 @@ def send_email(to_email: str, subject: str, html_body: str, text_body: str) -> b
     msg.attach(MIMEText(html_body, 'html', 'utf-8'))
 
     try:
-        print("[EMAIL] Connecting to SMTP server...")
-        
-        # Use SMTP_SSL for port 465, SMTP+starttls for port 587
-        if smtp_port == 465:
-            print("[EMAIL] Using SMTP_SSL (port 465)...")
-            with smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=10) as server:
-                print("[EMAIL] Logging in...")
-                server.login(smtp_user, smtp_password)
-                print("[EMAIL] Sending message...")
-                server.sendmail(smtp_from, to_email, msg.as_string())
-        else:
-            print("[EMAIL] Using SMTP+STARTTLS (port 587)...")
-            with smtplib.SMTP(smtp_host, smtp_port, timeout=10) as server:
-                print("[EMAIL] Starting TLS...")
-                server.starttls()
-                print("[EMAIL] Logging in...")
-                server.login(smtp_user, smtp_password)
-                print("[EMAIL] Sending message...")
-                server.sendmail(smtp_from, to_email, msg.as_string())
-        
-        print("[EMAIL] Email sent successfully!")
+        with smtplib.SMTP(smtp_host, smtp_port, timeout=10) as server:
+            server.starttls()
+            server.login(smtp_user, smtp_password)
+            server.sendmail(smtp_from, to_email, msg.as_string())
         return True
-    except smtplib.SMTPException as e:
-        print(f"[EMAIL] SMTP ERROR: {type(e).__name__}: {str(e)}")
-        return False
-    except OSError as e:
-        print(f"[EMAIL] Network ERROR: {type(e).__name__}: {str(e)}")
-        return False
-    except Exception as e:
-        print(f"[EMAIL] Unexpected ERROR: {type(e).__name__}: {str(e)}")
+    except (smtplib.SMTPException, OSError):
         return False
 
 

@@ -14,7 +14,7 @@ def get_connection():
 
 def get_schema() -> str:
     """Get schema prefix from env. Returns 'schema.' or empty string."""
-    schema = os.environ.get('MAIN_DB_SCHEMA', 't_p13705114_spa_community_portal')
+    schema = os.environ.get('MAIN_DB_SCHEMA', '')
     return f"{schema}." if schema else ""
 
 
@@ -57,7 +57,6 @@ def execute(sql: str) -> None:
     """Execute INSERT/UPDATE/DELETE query."""
     conn = get_connection()
     cur = conn.cursor()
-    print(f"[DB DEBUG] Executing SQL: {sql[:200]}...")  # Log first 200 chars
     cur.execute(sql)
     conn.commit()
     cur.close()

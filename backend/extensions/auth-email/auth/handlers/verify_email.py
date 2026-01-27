@@ -47,7 +47,7 @@ def handle(event: dict, origin: str = '*') -> dict:
         WHERE id = {escape(user_id)}
     """)
 
-    # Mark token as used
-    execute(f"UPDATE {S}email_verification_tokens SET expires_at = '2000-01-01 00:00:00' WHERE user_id = {escape(user_id)}")
+    # Delete used token
+    execute(f"DELETE FROM {S}email_verification_tokens WHERE user_id = {escape(user_id)}")
 
     return response(200, {'message': 'Email подтверждён'}, origin)

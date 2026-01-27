@@ -2,6 +2,7 @@ import { ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import Icon from '@/components/ui/icon';
 
 interface LayoutProps {
@@ -10,7 +11,7 @@ interface LayoutProps {
 
 export const Layout = ({ children }: LayoutProps) => {
   const location = useLocation();
-  const { user, loading } = useAuth();
+  const { user, logout } = useAuth();
   
   const isActive = (path: string) => {
     if (path === '/' && location.pathname === '/') return true;
@@ -44,6 +45,14 @@ export const Layout = ({ children }: LayoutProps) => {
                 События
               </Link>
               <Link
+                to="/calendar"
+                className={`text-sm md:text-base font-medium transition-colors ${
+                  isActive('/calendar') ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Календарь
+              </Link>
+              <Link
                 to="/bany"
                 className={`text-sm md:text-base font-medium transition-colors ${
                   isActive('/bany') ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
@@ -75,29 +84,49 @@ export const Layout = ({ children }: LayoutProps) => {
               >
                 О нас
               </Link>
-              {!loading && (
-                <>
-                  {user ? (
-                    <Link to="/profile">
-                      <Button variant="outline" size="sm" className="hidden md:flex items-center gap-2">
-                        <Icon name="User" size={16} />
-                        {user.name}
-                      </Button>
-                      <Button variant="outline" size="icon" className="md:hidden">
-                        <Icon name="User" size={16} />
-                      </Button>
-                    </Link>
-                  ) : (
-                    <Link to="/auth">
-                      <Button size="sm" className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 hidden md:flex">
-                        Войти
-                      </Button>
-                      <Button size="icon" className="md:hidden bg-gradient-to-r from-amber-600 to-orange-600">
-                        <Icon name="User" size={16} />
-                      </Button>
-                    </Link>
-                  )}
-                </>
+              
+              {user ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="flex items-center gap-2">
+                      <Icon name="User" className="h-4 w-4" />
+                      <span className="hidden md:inline">{user.name}</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuLabel>
+                      <div className="flex flex-col space-y-1">
+                        <p className="text-sm font-medium">{user.name}</p>
+                        <p className="text-xs text-muted-foreground">{user.email}</p>
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link to="/account" className="cursor-pointer">
+                        <Icon name="LayoutDashboard" className="mr-2 h-4 w-4" />
+                        Личный кабинет
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to="/account" className="cursor-pointer">
+                        <Icon name="Settings" className="mr-2 h-4 w-4" />
+                        Настройки
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => logout()} className="cursor-pointer text-destructive">
+                      <Icon name="LogOut" className="mr-2 h-4 w-4" />
+                      Выйти
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <Button asChild variant="default" size="sm">
+                  <Link to="/login">
+                    <Icon name="LogIn" className="h-4 w-4 mr-2" />
+                    Войти
+                  </Link>
+                </Button>
               )}
             </div>
           </div>
@@ -132,9 +161,8 @@ export const Layout = ({ children }: LayoutProps) => {
               <h4 className="font-semibold mb-4">Информация</h4>
               <ul className="space-y-2 text-sm">
                 <li><Link to="/about" className="text-muted-foreground hover:text-primary transition-colors">О нас</Link></li>
-                <li><Link to="/about/rules" className="text-muted-foreground hover:text-primary transition-colors">Правила</Link></li>
-                <li><Link to="/about/faq" className="text-muted-foreground hover:text-primary transition-colors">FAQ</Link></li>
-                <li><Link to="/about/contacts" className="text-muted-foreground hover:text-primary transition-colors">Контакты</Link></li>
+                <li><Link to="/calendar" className="text-muted-foreground hover:text-primary transition-colors">Календарь</Link></li>
+                <li><a href="https://t.me/sparkomrf" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors">Телеграм</a></li>
               </ul>
             </div>
             
@@ -160,8 +188,7 @@ export const Layout = ({ children }: LayoutProps) => {
           <div className="pt-6 border-t border-border flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-sm text-muted-foreground">© 2026 спарком.рф — Банное сообщество Москвы</p>
             <div className="flex gap-4 text-sm">
-              <Link to="/privacy" className="text-muted-foreground hover:text-primary transition-colors">Политика конфиденциальности</Link>
-              <Link to="/terms" className="text-muted-foreground hover:text-primary transition-colors">Пользовательское соглашение</Link>
+              <Link to="/about" className="text-muted-foreground hover:text-primary transition-colors">О проекте</Link>
             </div>
           </div>
         </div>

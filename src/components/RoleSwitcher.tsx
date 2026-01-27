@@ -30,7 +30,7 @@ export default function RoleSwitcher({ userId, currentRole, onRoleChange }: Role
   const loadUserRoles = async () => {
     try {
       const response = await fetch(
-        `https://functions.poehali.dev/4d4444ef-63b0-4b5a-8985-915f1ad69e1c?resource=roles&user_id=${userId}`
+        `https://functions.poehali.dev/b6fbba96-cc0b-4f59-b94d-e60ab18fe1b0?resource=roles&user_id=${userId}`
       );
       const data = await response.json();
       setRoles(data.roles || []);

@@ -1,0 +1,29 @@
+{
+  "tests": [
+    {
+      "name": "Получение публичных постов (неавторизованный)",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 200,
+      "expectedBody": {
+        "posts": "array",
+        "total": "number"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Создание поста без авторизации",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "title": "Тестовый пост",
+        "content": "Содержимое поста минимум 50 символов для прохождения валидации"
+      },
+      "expectedStatus": 401,
+      "expectedBody": {
+        "error": "string"
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}

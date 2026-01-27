@@ -132,32 +132,6 @@ export const mockBaths: Bath[] = [
     rating: 4.9,
     reviewsCount: 203
   },
-  {
-    id: 3,
-    slug: 'banya-u-reki',
-    name: 'Баня у реки',
-    address: 'Москва, Набережная Тараса Шевченко, 23',
-    description: 'Панорамная баня с видом на реку и уютной атмосферой',
-    capacity: 12,
-    pricePerHour: 4000,
-    features: ['Панорамные окна', 'Открытая терраса', 'Мангал', 'Караоке-зал'],
-    images: ['https://cdn.poehali.dev/projects/ef3c479a-8168-43df-a113-89d5072d1123/files/c78efb25-6330-4360-9373-6451dd986f0a.jpg'],
-    rating: 4.7,
-    reviewsCount: 94
-  },
-  {
-    id: 4,
-    slug: 'kupecheskaya-banya',
-    name: 'Купеческая баня',
-    address: 'Москва, ул. Пятницкая, 10',
-    description: 'Исторический комплекс с классическим интерьером XIX века',
-    capacity: 15,
-    pricePerHour: 5000,
-    features: ['Дубовая отделка', 'Антикварная мебель', 'Банкетный зал', 'Бильярд'],
-    images: ['https://cdn.poehali.dev/projects/ef3c479a-8168-43df-a113-89d5072d1123/files/73ab70f9-0949-4d1d-b65d-9025415051e9.jpg'],
-    rating: 5.0,
-    reviewsCount: 215
-  },
 ];
 
 export const mockMasters: Master[] = [
@@ -193,38 +167,6 @@ export const mockMasters: Master[] = [
     rating: 5.0,
     reviewsCount: 156
   },
-  {
-    id: 3,
-    slug: 'sergey-master',
-    name: 'Сергей Васильев',
-    specialization: 'Экстремальное парение',
-    experience: 12,
-    description: 'Мастер контрастных процедур и высокотемпературного парения для подготовленных любителей бани.',
-    avatar: 'https://cdn.poehali.dev/projects/ef3c479a-8168-43df-a113-89d5072d1123/files/c78efb25-6330-4360-9373-6451dd986f0a.jpg',
-    services: [
-      { name: 'Контрастное парение', price: 2200, duration: 60 },
-      { name: 'Спортивное парение', price: 3000, duration: 75 },
-      { name: 'Мастер-класс', price: 4000, duration: 120 }
-    ],
-    rating: 4.8,
-    reviewsCount: 67
-  },
-  {
-    id: 4,
-    slug: 'olga-aromatherapy',
-    name: 'Ольга Николаева',
-    specialization: 'Ароматерапия и релакс',
-    experience: 10,
-    description: 'Специалист по эфирным маслам и расслабляющим банным практикам с многолетним опытом.',
-    avatar: 'https://cdn.poehali.dev/projects/ef3c479a-8168-43df-a113-89d5072d1123/files/6e3e3866-e28e-4859-bb1d-4c95b1d02ac0.jpg',
-    services: [
-      { name: 'Релакс-парение', price: 2800, duration: 90 },
-      { name: 'Ароматический сеанс', price: 3200, duration: 90 },
-      { name: 'Антистресс программа', price: 4500, duration: 150 }
-    ],
-    rating: 4.9,
-    reviewsCount: 132
-  },
 ];
 
 export const mockBlogPosts: BlogPost[] = [
@@ -249,49 +191,5 @@ export const mockBlogPosts: BlogPost[] = [
     author: 'Мария Соколова',
     date: '2026-01-08',
     image: 'https://cdn.poehali.dev/projects/ef3c479a-8168-43df-a113-89d5072d1123/files/6e3e3866-e28e-4859-bb1d-4c95b1d02ac0.jpg'
-  },
-  {
-    id: 3,
-    slug: 'vidy-venikov',
-    title: 'Виды веников и их свойства',
-    excerpt: 'Березовый, дубовый, эвкалиптовый — разбираемся в традиционных вениках',
-    content: 'Статья о разных видах веников для бани...',
-    category: 'rituals',
-    author: 'Иван Петров',
-    date: '2026-01-05',
-    image: 'https://cdn.poehali.dev/projects/ef3c479a-8168-43df-a113-89d5072d1123/files/c78efb25-6330-4360-9373-6451dd986f0a.jpg'
-  },
-  {
-    id: 4,
-    slug: 'istoriya-russkoy-bani',
-    title: 'История русской бани: от древности до наших дней',
-    excerpt: 'Как баня стала неотъемлемой частью русской культуры',
-    content: 'Историческая статья о русской бане...',
-    category: 'history',
-    author: 'Александр Смирнов',
-    date: '2026-01-03',
-    image: 'https://cdn.poehali.dev/projects/ef3c479a-8168-43df-a113-89d5072d1123/files/73ab70f9-0949-4d1d-b65d-9025415051e9.jpg'
-  },
-  {
-    id: 5,
-    slug: 'banya-i-immunitet',
-    title: 'Баня и иммунитет: как укрепить здоровье',
-    excerpt: 'Регулярное посещение бани укрепляет иммунную систему',
-    content: 'Статья о влиянии бани на иммунитет...',
-    category: 'health',
-    author: 'Мария Соколова',
-    date: '2026-01-01',
-    image: 'https://cdn.poehali.dev/projects/ef3c479a-8168-43df-a113-89d5072d1123/files/6e3e3866-e28e-4859-bb1d-4c95b1d02ac0.jpg'
-  },
-  {
-    id: 6,
-    slug: 'kak-sdelat-venik',
-    title: 'Как сделать веник своими руками',
-    excerpt: 'Пошаговая инструкция по заготовке и вязке банных веников',
-    content: 'DIY руководство по изготовлению веника...',
-    category: 'diy',
-    author: 'Сергей Васильев',
-    date: '2025-12-28',
-    image: 'https://cdn.poehali.dev/projects/ef3c479a-8168-43df-a113-89d5072d1123/files/c78efb25-6330-4360-9373-6451dd986f0a.jpg'
   },
 ];

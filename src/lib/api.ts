@@ -1,6 +1,6 @@
-const API_URL = 'https://functions.poehali.dev/4d4444ef-63b0-4b5a-8985-915f1ad69e1c';
-const EVENTS_API_URL = 'https://functions.poehali.dev/4d4444ef-63b0-4b5a-8985-915f1ad69e1c';
-const SCHEDULE_API_URL = 'https://functions.poehali.dev/4d4444ef-63b0-4b5a-8985-915f1ad69e1c';
+const API_URL = 'https://functions.poehali.dev/39080c98-5026-4698-87c0-7b06c8c541c8';
+const EVENTS_API_URL = 'https://functions.poehali.dev/3b8cf90b-4e96-4334-84ad-01b48feb63d8';
+const SCHEDULE_API_URL = 'https://functions.poehali.dev/bd96d1c7-66c3-4e7a-8d97-71db8eaf221c';
 
 export interface Event {
   id: string;
