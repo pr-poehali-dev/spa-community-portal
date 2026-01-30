@@ -1,480 +1,461 @@
 """
-Telegram Bot Authentication Handler
+Telegram Auth Extension - Backend Function
 
-API:
-  GET  /?action=bot-url      - Get bot authorization URL
-  POST /?action=exchange      - Exchange auth token for JWT tokens
-  POST /?action=refresh       - Refresh access token
-  POST /?action=logout        - Logout user
-
-Returns JWT access tokens compatible with Email auth system.
-Uses telegram_auth_tokens table for initial auth, then refresh_tokens for sessions.
+Authentication via Telegram bot with temporary token approach.
+Flow:
+1. User clicks "Login via Telegram" -> redirect to bot
+2. Bot generates unique auth link and sends to user
+3. User clicks link -> frontend exchanges token for JWT
+4. Refresh tokens stored hashed (SHA256) in DB
 """
+
 import json
 import os
-import secrets
 import hashlib
-import base64
-from datetime import datetime, timedelta, timezone
+import secrets
+from datetime import datetime, timezone, timedelta
 from typing import Optional
 import psycopg2
 import jwt
 
 
 # =============================================================================
-# CONFIG
+# CONFIGURATION
 # =============================================================================
 
-JWT_ALGORITHM = 'HS256'
-ACCESS_TOKEN_EXPIRE_MINUTES = 15
-REFRESH_TOKEN_EXPIRE_DAYS = 30
-
-HEADERS = {
-    'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-}
-
-
-# =============================================================================
-# DATABASE
-# =============================================================================
-
-def get_connection():
-    """Get database connection."""
-    return psycopg2.connect(os.environ['DATABASE_URL'])
+def get_db_connection():
+    return psycopg2.connect(os.environ["DATABASE_URL"])
 
 
 def get_schema() -> str:
-    """Get database schema prefix with quotes."""
-    return '"t_p13705114_spa_community_portal".'
+    """Get database schema prefix."""
+    schema = os.environ.get("MAIN_DB_SCHEMA", "public")
+    return f"{schema}." if schema else ""
+
+
+def get_env(key: str) -> str:
+    value = os.environ.get(key)
+    if not value:
+        raise ValueError(f"Missing environment variable: {key}")
+    return value
 
 
 # =============================================================================
-# JWT UTILITIES
+# SECURITY HELPERS
 # =============================================================================
-
-def get_jwt_secret() -> str:
-    """Get JWT secret from environment."""
-    secret = os.environ.get('JWT_SECRET', '')
-    if not secret or len(secret) < 32:
-        raise ValueError('JWT_SECRET must be at least 32 characters')
-    return secret
-
-
-def create_access_token(user_id: int, email: str, name: str) -> tuple[str, int]:
-    """Create JWT access token (same format as Email auth)."""
-    expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    payload = {
-        'user_id': user_id,
-        'email': email,
-        'name': name,
-        'exp': int(expire.timestamp()),
-        'iat': int(datetime.now(timezone.utc).timestamp())
-    }
-    token = jwt.encode(payload, get_jwt_secret(), algorithm=JWT_ALGORITHM)
-    return token, ACCESS_TOKEN_EXPIRE_MINUTES * 60
-
-
-def create_refresh_token() -> str:
-    """Create random refresh token."""
-    return secrets.token_urlsafe(32)
-
 
 def hash_token(token: str) -> str:
-    """Hash token for storage."""
     return hashlib.sha256(token.encode()).hexdigest()
 
 
-def cleanup_expired_tokens(cur, S: str):
-    """Remove expired refresh tokens."""
-    now = datetime.now(timezone.utc).isoformat()
-    cur.execute(f"DELETE FROM {S}refresh_tokens WHERE expires_at < %s", (now,))
+def generate_token(length: int = 32) -> str:
+    return secrets.token_urlsafe(length)
+
+
+def create_jwt(user_id: int, secret: str, expires_in: int = 900) -> str:
+    payload = {
+        "user_id": user_id,
+        "exp": datetime.now(timezone.utc) + timedelta(seconds=expires_in),
+        "iat": datetime.now(timezone.utc),
+    }
+    return jwt.encode(payload, secret, algorithm="HS256")
 
 
 # =============================================================================
-# DATABASE HELPERS
+# DATABASE OPERATIONS
 # =============================================================================
 
-def find_user_by_telegram_id(cur, S: str, telegram_id: str) -> Optional[dict]:
-    """Find user by telegram_id."""
-    cur.execute(
-        f"SELECT id, email, name, avatar_url FROM {S}users WHERE telegram_id = %s",
-        (telegram_id,)
-    )
-    row = cur.fetchone()
+def get_auth_token(cursor, token: str) -> Optional[dict]:
+    """Get auth token data by token."""
+    token_hash = hash_token(token)
+    schema = get_schema()
+    
+    query = f"""
+        SELECT telegram_id, telegram_username, telegram_first_name,
+               telegram_last_name, telegram_photo_url, expires_at, used_at
+        FROM {schema}telegram_auth_tokens
+        WHERE token_hash = %s
+    """
+    print(f"[DB] Query: {query[:150]}")
+    cursor.execute(query, (token_hash,))
+
+    row = cursor.fetchone()
+    if not row:
+        print("[DB] Token not found in database")
+        return None
+
+    print(f"[DB] Found token for telegram_id: {row[0]}")
+    return {
+        "telegram_id": row[0],
+        "telegram_username": row[1],
+        "telegram_first_name": row[2],
+        "telegram_last_name": row[3],
+        "telegram_photo_url": row[4],
+        "expires_at": row[5],
+        "used": row[6] is not None,
+    }
+
+
+def mark_token_used(cursor, token: str) -> bool:
+    """Mark token as used."""
+    token_hash = hash_token(token)
+    schema = get_schema()
+
+    cursor.execute(f"""
+        UPDATE {schema}telegram_auth_tokens
+        SET used_at = NOW()
+        WHERE token_hash = %s AND used_at IS NULL
+        RETURNING id
+    """, (token_hash,))
+
+    return cursor.fetchone() is not None
+
+
+def cleanup_expired_tokens(cursor) -> None:
+    """Remove expired auth tokens."""
+    schema = get_schema()
+    cursor.execute(f"""
+        DELETE FROM {schema}telegram_auth_tokens
+        WHERE expires_at < NOW() OR (used_at IS NOT NULL AND created_at < NOW() - INTERVAL '1 hour')
+    """)
+
+
+def find_user_by_telegram_id(cursor, telegram_id: str) -> Optional[dict]:
+    """Find user by Telegram ID."""
+    schema = get_schema()
+    cursor.execute(f"""
+        SELECT id, email, name, avatar_url, telegram_id
+        FROM {schema}users
+        WHERE telegram_id = %s
+    """, (telegram_id,))
+
+    row = cursor.fetchone()
     if row:
         return {
-            'id': row[0],
-            'email': row[1],
-            'name': row[2],
-            'avatar_url': row[3]
+            "id": row[0],
+            "email": row[1],
+            "name": row[2],
+            "avatar_url": row[3],
+            "telegram_id": row[4],
         }
     return None
 
 
-def create_or_update_user(cur, S: str, telegram_id: str, username: Optional[str], 
-                          first_name: Optional[str], last_name: Optional[str], 
-                          photo_url: Optional[str]) -> dict:
+def create_or_update_user(
+    cursor,
+    telegram_id: str,
+    username: Optional[str],
+    first_name: Optional[str],
+    last_name: Optional[str],
+    photo_url: Optional[str]
+) -> dict:
     """Create new user or update existing one."""
+    schema = get_schema()
+
     # Build display name
     name_parts = []
     if first_name:
         name_parts.append(first_name)
     if last_name:
         name_parts.append(last_name)
-    display_name = " ".join(name_parts) if name_parts else username or f"TG User {telegram_id}"
+    display_name = " ".join(name_parts) if name_parts else username or f"User {telegram_id}"
 
     # Check if user exists
-    existing = find_user_by_telegram_id(cur, S, telegram_id)
+    existing = find_user_by_telegram_id(cursor, telegram_id)
 
     if existing:
         # Update existing user
-        cur.execute(
-            f"""UPDATE {S}users
-                SET name = COALESCE(%s, name),
-                    avatar_url = COALESCE(%s, avatar_url),
-                    updated_at = %s
-                WHERE telegram_id = %s
-                RETURNING id, email, name, avatar_url""",
-            (display_name, photo_url, datetime.now(timezone.utc).isoformat(), telegram_id)
-        )
-        print(f"[INFO] Updated existing Telegram user: telegram_id={telegram_id}")
+        cursor.execute(f"""
+            UPDATE {schema}users
+            SET name = COALESCE(%s, name),
+                avatar_url = COALESCE(%s, avatar_url),
+                updated_at = NOW()
+            WHERE telegram_id = %s
+            RETURNING id, email, name, avatar_url, telegram_id
+        """, (display_name, photo_url, telegram_id))
     else:
-        # Create new user (email='' and password_hash='' for Telegram users)
-        email = f"tg_{telegram_id}@temp.local"
-        now = datetime.now(timezone.utc).isoformat()
-        cur.execute(
-            f"""INSERT INTO {S}users 
-                (telegram_id, name, avatar_url, email, password_hash, email_verified, created_at, updated_at)
-                VALUES (%s, %s, %s, %s, '', TRUE, %s, %s)
-                RETURNING id, email, name, avatar_url""",
-            (telegram_id, display_name, photo_url, email, now, now)
-        )
-        print(f"[INFO] Created new Telegram user: telegram_id={telegram_id}")
+        # Create new user - email and password_hash are required but empty for Telegram users
+        cursor.execute(f"""
+            INSERT INTO {schema}users (telegram_id, name, avatar_url, email, password_hash, created_at, updated_at)
+            VALUES (%s, %s, %s, '', '', NOW(), NOW())
+            RETURNING id, email, name, avatar_url, telegram_id
+        """, (telegram_id, display_name, photo_url))
 
-    row = cur.fetchone()
+    row = cursor.fetchone()
     return {
-        'id': row[0],
-        'email': row[1],
-        'name': row[2],
-        'avatar_url': row[3],
-        'telegram_id': telegram_id
+        "id": row[0],
+        "email": row[1],
+        "name": row[2],
+        "avatar_url": row[3],
+        "telegram_id": row[4],
+    }
+
+
+def save_refresh_token(cursor, user_id: int, token_hash: str, expires_at: datetime) -> None:
+    """Save hashed refresh token to DB."""
+    schema = get_schema()
+    cursor.execute(f"""
+        INSERT INTO {schema}telegram_refresh_tokens (user_id, token_hash, expires_at)
+        VALUES (%s, %s, %s)
+    """, (user_id, token_hash, expires_at))
+
+
+def find_refresh_token(cursor, token_hash: str) -> Optional[dict]:
+    """Find refresh token by hash."""
+    schema = get_schema()
+    cursor.execute(f"""
+        SELECT user_id, expires_at
+        FROM {schema}telegram_refresh_tokens
+        WHERE token_hash = %s AND expires_at > NOW()
+    """, (token_hash,))
+
+    row = cursor.fetchone()
+    if row:
+        return {"user_id": row[0], "expires_at": row[1]}
+    return None
+
+
+def delete_refresh_token(cursor, token_hash: str) -> None:
+    """Delete refresh token."""
+    schema = get_schema()
+    cursor.execute(f"DELETE FROM {schema}telegram_refresh_tokens WHERE token_hash = %s", (token_hash,))
+
+
+def get_user_by_id(cursor, user_id: int) -> Optional[dict]:
+    """Get user by ID."""
+    schema = get_schema()
+    cursor.execute(f"""
+        SELECT id, email, name, avatar_url, telegram_id
+        FROM {schema}users WHERE id = %s
+    """, (user_id,))
+
+    row = cursor.fetchone()
+    if row:
+        return {
+            "id": row[0],
+            "email": row[1],
+            "name": row[2],
+            "avatar_url": row[3],
+            "telegram_id": row[4],
+        }
+    return None
+
+
+def cleanup_expired_refresh_tokens(cursor) -> None:
+    """Remove expired refresh tokens."""
+    schema = get_schema()
+    cursor.execute(f"DELETE FROM {schema}telegram_refresh_tokens WHERE expires_at < NOW()")
+
+
+# =============================================================================
+# CORS HELPERS
+# =============================================================================
+
+def get_cors_headers() -> dict:
+    allowed_origins = os.environ.get("ALLOWED_ORIGINS", "*")
+    return {
+        "Access-Control-Allow-Origin": allowed_origins,
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+    }
+
+
+def cors_response(status: int, body: dict) -> dict:
+    return {
+        "statusCode": status,
+        "headers": {**get_cors_headers(), "Content-Type": "application/json"},
+        "body": json.dumps(body),
+    }
+
+
+def options_response() -> dict:
+    return {
+        "statusCode": 204,
+        "headers": get_cors_headers(),
+        "body": "",
     }
 
 
 # =============================================================================
-# HTTP HELPERS
+# ACTION HANDLERS
 # =============================================================================
 
-def get_allowed_origins() -> list[str]:
-    """Get list of allowed origins from environment."""
-    origins = os.environ.get('ALLOWED_ORIGINS', '')
-    if origins:
-        return [o.strip() for o in origins.split(',')]
-    return []
-
-
-def is_origin_allowed(origin: str) -> bool:
-    """Check if origin is allowed."""
-    allowed = get_allowed_origins()
-    if not allowed:
-        return True
-    return origin in allowed
-
-
-def response(status_code: int, body: dict, origin: str = '*') -> dict:
-    """Create HTTP response."""
-    headers = HEADERS.copy()
-    if origin != '*' and is_origin_allowed(origin):
-        headers['Access-Control-Allow-Origin'] = origin
-    elif not get_allowed_origins():
-        headers['Access-Control-Allow-Origin'] = origin if origin != '*' else '*'
-    else:
-        headers['Access-Control-Allow-Origin'] = 'null'
-
-    return {
-        'statusCode': status_code,
-        'headers': headers,
-        'body': json.dumps(body),
-        'isBase64Encoded': False
-    }
-
-
-def error(status_code: int, message: str, origin: str = '*') -> dict:
-    """Create error response."""
-    return response(status_code, {'error': message}, origin)
-
-
-def get_origin(event: dict) -> str:
-    """Get request origin."""
-    headers = event.get('headers', {}) or {}
-    return headers.get('origin', headers.get('Origin', '*'))
-
-
-# =============================================================================
-# HANDLERS
-# =============================================================================
-
-def handle_bot_url(event: dict, origin: str) -> dict:
-    """Get Telegram bot URL for authentication."""
-    bot_username = os.environ.get('TELEGRAM_BOT_USERNAME', '')
+def handle_callback(cursor, body: dict) -> dict:
+    """
+    POST ?action=callback
+    Frontend calls this with token to exchange for JWT.
+    Like standard OAuth callback.
+    """
+    token = body.get("token")
+    print(f"[CALLBACK] Received token: {token[:10]}..." if token else "[CALLBACK] No token received")
     
-    if not bot_username:
-        print(f"[ERROR] Missing TELEGRAM_BOT_USERNAME")
-        return error(500, 'Server configuration error', origin)
+    if not token:
+        return cors_response(400, {"error": "Missing token"})
 
-    bot_url = f"https://t.me/{bot_username}?start=auth"
-    
-    print(f"[DEBUG] Generated bot URL: {bot_url}")
+    token_data = get_auth_token(cursor, token)
+    print(f"[CALLBACK] Token data from DB: {token_data}")
 
-    return response(200, {
-        'bot_url': bot_url,
-        'bot_username': bot_username
-    }, origin)
+    if not token_data:
+        print("[CALLBACK] Token not found in database")
+        return cors_response(404, {"error": "Token not found"})
 
+    # Check if expired (handle both naive and aware datetime from DB)
+    expires_at = token_data["expires_at"]
+    now = datetime.now(timezone.utc)
+    # Convert to naive UTC for comparison if needed
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if expires_at < now:
+        return cors_response(410, {"error": "Token expired"})
 
-def handle_exchange(event: dict, origin: str) -> dict:
-    """Exchange Telegram auth token for JWT tokens."""
-    body_str = event.get('body', '{}')
-    if event.get('isBase64Encoded'):
-        body_str = base64.b64decode(body_str).decode('utf-8')
+    # Check if already used
+    if token_data["used"]:
+        return cors_response(410, {"error": "Token already used"})
 
-    try:
-        payload = json.loads(body_str) if body_str else {}
-    except json.JSONDecodeError:
-        return error(400, 'Invalid JSON', origin)
+    # Check if user data exists
+    if not token_data["telegram_id"]:
+        return cors_response(400, {"error": "Token not authenticated"})
 
-    auth_token = payload.get('auth_token', '')
-    if not auth_token:
-        return error(400, 'auth_token required', origin)
+    # Get JWT secret
+    jwt_secret = get_env("JWT_SECRET")
+    if len(jwt_secret) < 32:
+        return cors_response(500, {"error": "Server configuration error"})
 
-    try:
-        jwt_secret = get_jwt_secret()
-    except ValueError as e:
-        print(f"[ERROR] JWT secret validation failed: {e}")
-        return error(500, 'Server configuration error: JWT_SECRET', origin)
+    # Create or update user
+    user = create_or_update_user(
+        cursor,
+        telegram_id=token_data["telegram_id"],
+        username=token_data["telegram_username"],
+        first_name=token_data["telegram_first_name"],
+        last_name=token_data["telegram_last_name"],
+        photo_url=token_data["telegram_photo_url"],
+    )
 
-    S = get_schema()
-    conn = get_connection()
+    # Mark token as used
+    mark_token_used(cursor, token)
 
-    try:
-        cur = conn.cursor()
-        now = datetime.now(timezone.utc).isoformat()
+    # Generate tokens
+    access_token = create_jwt(user["id"], jwt_secret)
+    refresh_token = generate_token(48)
+    refresh_token_hash = hash_token(refresh_token)
+    refresh_expires = datetime.now(timezone.utc) + timedelta(days=30)
 
-        # Find auth token in telegram_auth_tokens table
-        token_hash = hash_token(auth_token)
-        cur.execute(
-            f"""SELECT telegram_id, telegram_username, telegram_first_name, telegram_last_name, 
-                       telegram_photo_url, expires_at, used_at
-                FROM {S}telegram_auth_tokens
-                WHERE token_hash = %s""",
-            (token_hash,)
-        )
-        row = cur.fetchone()
+    save_refresh_token(cursor, user["id"], refresh_token_hash, refresh_expires)
 
-        if not row:
-            print(f"[ERROR] Auth token not found in database")
-            return error(401, 'Invalid auth token', origin)
-
-        telegram_id, username, first_name, last_name, photo_url, expires_at, used_at = row
-
-        # Check if token expired
-        if expires_at and datetime.fromisoformat(expires_at) < datetime.now(timezone.utc):
-            print(f"[ERROR] Auth token expired")
-            return error(401, 'Auth token expired', origin)
-
-        # Check if token already used
-        if used_at:
-            print(f"[WARN] Auth token already used")
-            return error(401, 'Auth token already used', origin)
-
-        # Mark token as used
-        cur.execute(
-            f"UPDATE {S}telegram_auth_tokens SET used_at = %s WHERE token_hash = %s",
-            (now, token_hash)
-        )
-
-        # Create or update user
-        user_data = create_or_update_user(
-            cur, S, str(telegram_id), username, first_name, last_name, photo_url
-        )
-
-        user_id = user_data['id']
-        email = user_data['email']
-        name = user_data['name']
-
-        # Update last_login_at
-        cur.execute(
-            f"UPDATE {S}users SET last_login_at = %s WHERE id = %s",
-            (now, user_id)
-        )
-
-        # Create JWT tokens (same format as Email auth)
-        access_token, expires_in = create_access_token(user_id, email, name)
-        refresh_token = create_refresh_token()
-        refresh_token_hash = hash_token(refresh_token)
-        refresh_expires = (datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)).isoformat()
-
-        # Store refresh token in shared refresh_tokens table
-        cur.execute(
-            f"""INSERT INTO {S}refresh_tokens (user_id, token_hash, expires_at, created_at)
-                VALUES (%s, %s, %s, %s)""",
-            (user_id, refresh_token_hash, refresh_expires, now)
-        )
-
-        conn.commit()
-        print(f"[SUCCESS] Telegram auth complete for user_id={user_id}")
-
-        return response(200, {
-            'access_token': access_token,
-            'refresh_token': refresh_token,
-            'expires_in': expires_in,
-            'user': user_data
-        }, origin)
-
-    except Exception as e:
-        print(f"[ERROR] Exchange error: {type(e).__name__}: {str(e)}")
-        conn.rollback()
-        return error(500, 'Authentication failed', origin)
-    finally:
-        conn.close()
+    return cors_response(200, {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "expires_in": 900,
+        "user": user,
+    })
 
 
-def handle_refresh(event: dict, origin: str) -> dict:
-    """Refresh access token using refresh token."""
-    body_str = event.get('body', '{}')
-    if event.get('isBase64Encoded'):
-        body_str = base64.b64decode(body_str).decode('utf-8')
-
-    try:
-        payload = json.loads(body_str) if body_str else {}
-    except json.JSONDecodeError:
-        return error(400, 'Invalid JSON', origin)
-
-    refresh_token = payload.get('refresh_token', '')
+def handle_refresh(cursor, body: dict) -> dict:
+    """
+    POST ?action=refresh
+    Refresh access token using refresh token.
+    """
+    refresh_token = body.get("refresh_token")
     if not refresh_token:
-        return error(400, 'Refresh token required', origin)
+        return cors_response(400, {"error": "Missing refresh_token"})
 
-    S = get_schema()
-    conn = get_connection()
+    jwt_secret = get_env("JWT_SECRET")
+    token_hash = hash_token(refresh_token)
 
-    try:
-        cur = conn.cursor()
-        now = datetime.now(timezone.utc).isoformat()
-        
-        # Clean expired tokens
-        cleanup_expired_tokens(cur, S)
+    token_data = find_refresh_token(cursor, token_hash)
+    if not token_data:
+        return cors_response(401, {"error": "Invalid or expired refresh token"})
 
-        # Find token
+    user = get_user_by_id(cursor, token_data["user_id"])
+    if not user:
+        return cors_response(401, {"error": "User not found"})
+
+    # Generate new access token
+    access_token = create_jwt(user["id"], jwt_secret)
+
+    return cors_response(200, {
+        "access_token": access_token,
+        "expires_in": 900,
+        "user": user,
+    })
+
+
+def handle_logout(cursor, body: dict) -> dict:
+    """
+    POST ?action=logout
+    Invalidate refresh token.
+    """
+    refresh_token = body.get("refresh_token")
+    if refresh_token:
         token_hash = hash_token(refresh_token)
-        cur.execute(
-            f"""SELECT user_id, expires_at FROM {S}refresh_tokens 
-                WHERE token_hash = %s AND expires_at > %s""",
-            (token_hash, now)
-        )
-        row = cur.fetchone()
+        delete_refresh_token(cursor, token_hash)
 
-        if not row:
-            return error(401, 'Invalid or expired refresh token', origin)
-
-        user_id, _ = row
-
-        # Get user data
-        cur.execute(
-            f"SELECT email, name FROM {S}users WHERE id = %s",
-            (user_id,)
-        )
-        user_row = cur.fetchone()
-
-        if not user_row:
-            return error(401, 'User not found', origin)
-
-        email, name = user_row
-
-        # Create new access token
-        access_token, expires_in = create_access_token(user_id, email, name)
-
-        return response(200, {
-            'access_token': access_token,
-            'expires_in': expires_in
-        }, origin)
-
-    except Exception as e:
-        print(f"[ERROR] Refresh token error: {type(e).__name__}: {str(e)}")
-        return error(500, 'Token refresh failed', origin)
-    finally:
-        conn.close()
-
-
-def handle_logout(event: dict, origin: str) -> dict:
-    """Logout user by revoking refresh token."""
-    body_str = event.get('body', '{}')
-    if event.get('isBase64Encoded'):
-        body_str = base64.b64decode(body_str).decode('utf-8')
-
-    try:
-        payload = json.loads(body_str) if body_str else {}
-    except json.JSONDecodeError:
-        return error(400, 'Invalid JSON', origin)
-
-    refresh_token = payload.get('refresh_token', '')
-    if not refresh_token:
-        return response(200, {'message': 'Logged out'}, origin)
-
-    S = get_schema()
-    conn = get_connection()
-
-    try:
-        cur = conn.cursor()
-        token_hash = hash_token(refresh_token)
-        
-        cur.execute(
-            f"DELETE FROM {S}refresh_tokens WHERE token_hash = %s",
-            (token_hash,)
-        )
-        
-        conn.commit()
-        return response(200, {'message': 'Logged out'}, origin)
-
-    except Exception as e:
-        print(f"[ERROR] Logout error: {type(e).__name__}: {str(e)}")
-        return error(500, 'Logout failed', origin)
-    finally:
-        conn.close()
+    return cors_response(200, {"success": True})
 
 
 # =============================================================================
 # MAIN HANDLER
 # =============================================================================
 
-def handler(event: dict, context) -> dict:
-    """Main entry point for Telegram bot authentication."""
-    method = event.get('httpMethod', 'GET')
-    query = event.get('queryStringParameters', {}) or {}
-    action = query.get('action', 'bot-url')
-    origin = get_origin(event)
+def handler(event, context):
+    """Main entry point."""
+    method = event.get("httpMethod", "GET")
 
-    print(f"[DEBUG] Received request: method={method}, query={query}")
+    # Handle CORS preflight
+    if method == "OPTIONS":
+        return options_response()
 
-    if method == 'OPTIONS':
-        return {
-            'statusCode': 200,
-            'headers': HEADERS,
-            'body': '',
-            'isBase64Encoded': False
-        }
+    # Parse query params
+    params = event.get("queryStringParameters") or {}
+    action = params.get("action", "")
+    print(f"[HANDLER] Method: {method}, Action: {action}")
 
-    print(f"[DEBUG] Action: '{action}'")
+    # Parse body for POST requests
+    body = {}
+    if method == "POST":
+        raw_body = event.get("body", "{}")
+        print(f"[HANDLER] Raw body: {raw_body[:200] if raw_body else 'empty'}")
+        try:
+            body = json.loads(raw_body) if raw_body else {}
+            print(f"[HANDLER] Parsed body keys: {list(body.keys())}")
+        except json.JSONDecodeError:
+            print("[HANDLER] JSON decode error")
+            return cors_response(400, {"error": "Invalid JSON"})
 
-    if action == 'bot-url' and method == 'GET':
-        return handle_bot_url(event, origin)
-    elif action == 'exchange' and method == 'POST':
-        return handle_exchange(event, origin)
-    elif action == 'refresh' and method == 'POST':
-        return handle_refresh(event, origin)
-    elif action == 'logout' and method == 'POST':
-        return handle_logout(event, origin)
-    else:
-        return error(400, f'Unknown action: {action}', origin)
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Cleanup expired tokens periodically (ignore errors)
+        try:
+            cleanup_expired_tokens(cursor)
+            cleanup_expired_refresh_tokens(cursor)
+        except Exception as cleanup_error:
+            print(f"[WARNING] Cleanup failed: {cleanup_error}")
+
+        # Route to action handler
+        if action == "callback" and method == "POST":
+            response = handle_callback(cursor, body)
+        elif action == "refresh" and method == "POST":
+            response = handle_refresh(cursor, body)
+        elif action == "logout" and method == "POST":
+            response = handle_logout(cursor, body)
+        else:
+            response = cors_response(400, {"error": f"Unknown action: {action}"})
+
+        conn.commit()
+        return response
+
+    except ValueError as e:
+        return cors_response(500, {"error": "Server configuration error"})
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        print(f"[ERROR] Exception: {type(e).__name__}: {str(e)}")
+        import traceback
+        print(f"[ERROR] Traceback: {traceback.format_exc()}")
+        return cors_response(500, {"error": "Internal server error"})
+    finally:
+        if conn:
+            conn.close()

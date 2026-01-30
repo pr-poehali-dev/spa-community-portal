@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,20 +9,16 @@ import Icon from '@/components/ui/icon';
 
 const ForgotPasswordPage = () => {
   const { toast } = useToast();
-  const navigate = useNavigate();
-  const [step, setStep] = useState<'email' | 'code'>('email');
   const [email, setEmail] = useState('');
-  const [code, setCode] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [sent, setSent] = useState(false);
 
-  const handleRequestCode = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      const response = await fetch('https://functions.poehali.dev/fdba6fa3-4998-4f82-ac05-2dd07a9acac3?action=reset-password', {
+      const response = await fetch('https://functions.poehali.dev/42489f06-2bf3-43cb-ac8a-5b283ec7160a', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
@@ -34,65 +30,11 @@ const ForgotPasswordPage = () => {
         throw new Error(data.error || 'Ошибка отправки');
       }
 
+      setSent(true);
       toast({
-        title: 'Код отправлен',
-        description: 'Проверьте вашу почту. Код действителен 1 час.'
+        title: 'Письмо отправлено',
+        description: data.message
       });
-      
-      setStep('code');
-    } catch (error: any) {
-      toast({
-        title: 'Ошибка',
-        description: error.message,
-        variant: 'destructive'
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleResetPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (password !== confirmPassword) {
-      toast({
-        title: 'Ошибка',
-        description: 'Пароли не совпадают',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    if (password.length < 6) {
-      toast({
-        title: 'Ошибка',
-        description: 'Пароль должен быть не менее 6 символов',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const response = await fetch('https://functions.poehali.dev/fdba6fa3-4998-4f82-ac05-2dd07a9acac3?action=reset-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, code, new_password: password })
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Ошибка сброса пароля');
-      }
-
-      toast({
-        title: 'Успешно',
-        description: 'Пароль изменён. Теперь можете войти.'
-      });
-      
-      navigate('/login');
     } catch (error: any) {
       toast({
         title: 'Ошибка',
@@ -113,18 +55,41 @@ const ForgotPasswordPage = () => {
               <Icon name="KeyRound" className="h-8 w-8 text-white" />
             </div>
           </div>
-          <CardTitle className="text-2xl">
-            {step === 'email' ? 'Восстановление пароля' : 'Введите код и новый пароль'}
-          </CardTitle>
+          <CardTitle className="text-2xl">Восстановление пароля</CardTitle>
           <CardDescription>
-            {step === 'email' 
-              ? 'Введите email для получения кода' 
-              : 'Код отправлен на ' + email}
+            {sent 
+              ? 'Проверьте вашу почту' 
+              : 'Введите email для получения ссылки'}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {step === 'email' ? (
-            <form onSubmit={handleRequestCode} className="space-y-4">
+          {sent ? (
+            <div className="space-y-4 text-center">
+              <div className="bg-green-50 border-2 border-green-200 rounded-lg p-4">
+                <Icon name="MailCheck" className="h-12 w-12 text-green-600 mx-auto mb-2" />
+                <p className="text-green-800">
+                  Если аккаунт с таким email существует, мы отправили письмо с инструкцией для восстановления пароля.
+                </p>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Не получили письмо? Проверьте папку "Спам" или повторите попытку через несколько минут.
+              </p>
+              <Button 
+                onClick={() => setSent(false)} 
+                variant="outline" 
+                className="w-full"
+              >
+                Отправить повторно
+              </Button>
+              <Link to="/login">
+                <Button variant="ghost" className="w-full">
+                  <Icon name="ArrowLeft" className="h-4 w-4 mr-2" />
+                  Вернуться к входу
+                </Button>
+              </Link>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Email адрес</Label>
                 <Input
@@ -136,11 +101,11 @@ const ForgotPasswordPage = () => {
                   required
                 />
                 <p className="text-xs text-muted-foreground">
-                  Мы отправим 6-значный код для сброса пароля
+                  Мы отправим ссылку для создания нового пароля
                 </p>
               </div>
               <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? 'Отправка...' : 'Отправить код'}
+                {loading ? 'Отправка...' : 'Отправить ссылку'}
               </Button>
               <Link to="/login">
                 <Button variant="ghost" className="w-full">
@@ -148,68 +113,6 @@ const ForgotPasswordPage = () => {
                   Вернуться к входу
                 </Button>
               </Link>
-            </form>
-          ) : (
-            <form onSubmit={handleResetPassword} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="code">Код из письма</Label>
-                <Input
-                  id="code"
-                  type="text"
-                  placeholder="123456"
-                  value={code}
-                  onChange={(e) => setCode(e.target.value)}
-                  required
-                  maxLength={6}
-                  className="text-center text-2xl tracking-widest font-mono"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Введите 6-значный код из письма
-                </p>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="password">Новый пароль</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  minLength={6}
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Повторите пароль</Label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  placeholder="••••••••"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                  minLength={6}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Минимум 6 символов
-                </p>
-              </div>
-              
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? 'Сохранение...' : 'Сбросить пароль'}
-              </Button>
-              
-              <Button 
-                type="button"
-                variant="ghost" 
-                className="w-full"
-                onClick={() => setStep('email')}
-              >
-                <Icon name="ArrowLeft" className="h-4 w-4 mr-2" />
-                Изменить email
-              </Button>
             </form>
           )}
         </CardContent>

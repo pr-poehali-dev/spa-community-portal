@@ -4,7 +4,6 @@ import { useTelegramAuth } from '@/components/extensions/telegram-bot/useTelegra
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Icon from '@/components/ui/icon';
-import Cookies from 'js-cookie';
 
 const TELEGRAM_AUTH_URL = 'https://functions.poehali.dev/dc3fb91d-b358-49d4-8739-e624e705ab71';
 const TELEGRAM_BOT_USERNAME = import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'SparcomAuth_bot';
@@ -18,7 +17,7 @@ const TelegramCallbackPage = () => {
 
   const telegramAuth = useTelegramAuth({
     apiUrls: {
-      callback: `${TELEGRAM_AUTH_URL}?action=exchange`,
+      callback: `${TELEGRAM_AUTH_URL}?action=callback`,
       refresh: `${TELEGRAM_AUTH_URL}?action=refresh`,
       logout: `${TELEGRAM_AUTH_URL}?action=logout`,
     },
@@ -40,10 +39,10 @@ const TelegramCallbackPage = () => {
     const authenticate = async () => {
       try {
         // Вызываем API напрямую, чтобы получить токен и user из ответа
-        const response = await fetch(`${TELEGRAM_AUTH_URL}?action=exchange`, {
+        const response = await fetch(`${TELEGRAM_AUTH_URL}?action=callback`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ auth_token: token }),
+          body: JSON.stringify({ token }),
         });
 
         if (cancelled) return;
@@ -56,9 +55,7 @@ const TelegramCallbackPage = () => {
             user: data.user
           });
 
-          // Сохраняем в cookies и localStorage для AuthContext
-          Cookies.set('auth_token', data.access_token, { expires: 30, sameSite: 'lax' });
-          Cookies.set('telegram_user', JSON.stringify(data.user), { expires: 30, sameSite: 'lax' });
+          // Сохраняем в localStorage для AuthContext
           localStorage.setItem('auth_token', data.access_token);
           localStorage.setItem('telegram_user', JSON.stringify(data.user));
           

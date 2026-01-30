@@ -10,7 +10,6 @@ import { Layout } from "./components/Layout";
 const Home = lazy(() => import("./pages/Home"));
 const EventsListPage = lazy(() => import("./pages/EventsListPage"));
 const EventDetailPage = lazy(() => import("./pages/EventDetailPage"));
-const EventsCalendarPage = lazy(() => import("./pages/EventsCalendarPage"));
 const BathsListPage = lazy(() => import("./pages/BathsListPage"));
 const BathDetailPage = lazy(() => import("./pages/BathDetailPage"));
 const MastersListPage = lazy(() => import("./pages/MastersListPage"));
@@ -21,7 +20,6 @@ const BlogEditorPage = lazy(() => import("./pages/BlogEditorPage"));
 const AboutPage = lazy(() => import("./pages/AboutPage"));
 const LoginPage = lazy(() => import("./pages/LoginPage"));
 const TelegramCallbackPage = lazy(() => import("./pages/TelegramCallbackPage"));
-const YandexCallbackPage = lazy(() => import("./pages/YandexCallbackPage"));
 const ForgotPasswordPage = lazy(() => import("./pages/ForgotPasswordPage"));
 const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
@@ -34,21 +32,12 @@ const AdminBookingsPage = lazy(() => import("./pages/admin/AdminBookingsPage"));
 const AdminSettingsPage = lazy(() => import("./pages/admin/AdminSettingsPage"));
 const AdminRoleApplicationsPage = lazy(() => import("./pages/admin/AdminRoleApplicationsPage"));
 const AdminBlogPage = lazy(() => import("./pages/admin/AdminBlogPage"));
-const AdminAnalyticsPage = lazy(() => import("./pages/admin/AdminAnalyticsPage"));
 const AdminLoginPage = lazy(() => import("./pages/AdminLoginPage"));
 const ApplyRolePage = lazy(() => import("./pages/ApplyRolePage"));
 const AccountPage = lazy(() => import("./pages/AccountPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      refetchOnWindowFocus: false,
-      retry: 1,
-      staleTime: 5 * 60 * 1000,
-    },
-  },
-});
+const queryClient = new QueryClient();
 
 const LoadingFallback = () => (
   <div className="min-h-screen flex items-center justify-center">
@@ -75,14 +64,12 @@ const App = () => (
                 <Route path="role-applications" element={<AdminRoleApplicationsPage />} />
                 <Route path="transactions" element={<AdminTransactionsPage />} />
                 <Route path="bookings" element={<AdminBookingsPage />} />
-                <Route path="analytics" element={<AdminAnalyticsPage />} />
                 <Route path="settings" element={<AdminSettingsPage />} />
               </Route>
 
               <Route path="/" element={<Layout><Home /></Layout>} />
               <Route path="/events" element={<Layout><EventsListPage /></Layout>} />
               <Route path="/events/:slug" element={<Layout><EventDetailPage /></Layout>} />
-              <Route path="/calendar" element={<Layout><EventsCalendarPage /></Layout>} />
               <Route path="/bany" element={<Layout><BathsListPage /></Layout>} />
               <Route path="/bany/:slug" element={<Layout><BathDetailPage /></Layout>} />
               <Route path="/masters" element={<Layout><MastersListPage /></Layout>} />
@@ -93,7 +80,6 @@ const App = () => (
               <Route path="/about" element={<Layout><AboutPage /></Layout>} />
               <Route path="/login" element={<Layout><LoginPage /></Layout>} />
               <Route path="/auth/telegram/callback" element={<TelegramCallbackPage />} />
-              <Route path="/auth/yandex/callback" element={<YandexCallbackPage />} />
               <Route path="/forgot-password" element={<Layout><ForgotPasswordPage /></Layout>} />
               <Route path="/reset-password" element={<Layout><ResetPasswordPage /></Layout>} />
               <Route path="/account" element={<Layout><AccountPage /></Layout>} />

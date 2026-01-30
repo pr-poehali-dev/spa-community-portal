@@ -1,12 +1,13 @@
 """
-API для работы с мероприятиями СПАРКОМ (Service → ServiceSchedule архитектура).
-Позволяет получать список событий, детальную информацию, расписание и регистрироваться на мероприятия.
+API для работы с мероприятиями СПАРКОМ.
+Позволяет получать список событий, детальную информацию и регистрироваться на мероприятия.
 """
 import json
 import os
 import psycopg2
 from datetime import datetime
 from typing import Optional
+from models import EventListItem, EventDetail, RegistrationRequest
 
 SCHEMA = 't_p13705114_spa_community_portal'
 
@@ -43,90 +44,57 @@ def get_user_id_from_token(headers: dict) -> Optional[int]:
         return None
 
 def get_events_list(params: dict) -> dict:
-    """Получение списка событий с фильтрацией (новая архитектура)"""
+    """Получение списка событий с фильтрацией"""
     conn = get_db_connection()
     cur = conn.cursor()
     
+    event_type = params.get('type', '')
     search = params.get('search', '')
     date_from = params.get('date_from', '')
     date_to = params.get('date_to', '')
-    city = params.get('city', '')
-    gender_type = params.get('gender_type', '')
-    price_min = params.get('price_min', '')
-    price_max = params.get('price_max', '')
-    availability = params.get('available_only', 'false').lower() == 'true'
+    available_only = params.get('available_only', 'false').lower() == 'true'
     sort = params.get('sort', 'date')
     limit = min(int(params.get('limit', 20)), 100)
     offset = int(params.get('offset', 0))
     
-    where_clauses = ["s.type = 'EVENT'", "s.is_active = true"]
+    where_clauses = []
     query_params = []
     
+    if event_type:
+        where_clauses.append(f"type = %s")
+        query_params.append(event_type)
+    
     if search:
-        where_clauses.append("(s.title ILIKE %s OR s.description ILIKE %s)")
+        where_clauses.append(f"(title ILIKE %s OR description ILIKE %s)")
         search_param = f'%{search}%'
         query_params.extend([search_param, search_param])
     
-    if city:
-        where_clauses.append("s.city = %s")
-        query_params.append(city)
-    
-    if gender_type:
-        where_clauses.append("s.gender_type = %s")
-        query_params.append(gender_type)
-    
-    if price_min:
-        where_clauses.append("s.base_price >= %s")
-        query_params.append(int(price_min))
-    
-    if price_max:
-        where_clauses.append("s.base_price <= %s")
-        query_params.append(int(price_max))
-    
-    schedule_filters = []
     if date_from:
-        schedule_filters.append("sch.start_datetime >= %s")
+        where_clauses.append(f"date >= %s")
         query_params.append(date_from)
     
     if date_to:
-        schedule_filters.append("sch.start_datetime <= %s")
+        where_clauses.append(f"date <= %s")
         query_params.append(date_to)
     
-    if availability:
-        schedule_filters.append("sch.capacity_available > 0")
+    if available_only:
+        where_clauses.append(f"available_spots > 0")
     
-    schedule_where = ""
-    if schedule_filters:
-        schedule_where = "AND " + " AND ".join(schedule_filters)
-    
-    where_sql = "WHERE " + " AND ".join(where_clauses)
+    where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
     
     sort_mapping = {
-        'date': 'nearest_datetime ASC',
-        'price_asc': 's.base_price ASC',
-        'price_desc': 's.base_price DESC',
-        'spots': 'max_available DESC'
+        'date': 'date ASC, time ASC',
+        'price_asc': 'price ASC',
+        'price_desc': 'price DESC',
+        'spots': 'available_spots DESC'
     }
-    order_sql = f"ORDER BY {sort_mapping.get(sort, 'nearest_datetime ASC')}"
+    order_sql = f"ORDER BY {sort_mapping.get(sort, 'date ASC, time ASC')}"
     
     query = f"""
-        SELECT 
-            s.id, s.slug, s.title, s.description, s.duration_minutes, s.base_price,
-            s.gender_type, s.city, s.images,
-            b.id as bathhouse_id, b.name as bathhouse_name, b.address as bathhouse_address,
-            m.id as master_id, m.name as master_name, m.avatar_url as master_avatar,
-            COUNT(DISTINCT sch.id) as schedules_count,
-            MIN(sch.start_datetime) as nearest_datetime,
-            MAX(sch.capacity_available) as max_available
-        FROM {SCHEMA}.services s
-        LEFT JOIN {SCHEMA}.baths b ON s.bathhouse_id = b.id
-        LEFT JOIN {SCHEMA}.masters m ON s.master_id = m.id
-        LEFT JOIN {SCHEMA}.service_schedules sch ON s.id = sch.service_id 
-            AND sch.status = 'active' 
-            AND sch.start_datetime > NOW()
-            {schedule_where}
+        SELECT id, slug, title, description, date, time, location, 
+               type, price, available_spots, total_spots, image_url
+        FROM {SCHEMA}.events
         {where_sql}
-        GROUP BY s.id, b.id, b.name, b.address, m.id, m.name, m.avatar_url
         {order_sql}
         LIMIT %s OFFSET %s
     """
@@ -135,47 +103,25 @@ def get_events_list(params: dict) -> dict:
     cur.execute(query, query_params)
     rows = cur.fetchall()
     
-    count_query = f"""
-        SELECT COUNT(DISTINCT s.id)
-        FROM {SCHEMA}.services s
-        LEFT JOIN {SCHEMA}.service_schedules sch ON s.id = sch.service_id 
-            AND sch.status = 'active' 
-            AND sch.start_datetime > NOW()
-            {schedule_where}
-        {where_sql}
-    """
+    count_query = f"SELECT COUNT(*) FROM {SCHEMA}.events {where_sql}"
     cur.execute(count_query, query_params[:-2])
     total = cur.fetchone()[0]
     
     items = []
     for row in rows:
-        image_url = None
-        if row[8] and len(row[8]) > 0:
-            image_url = row[8][0].get('url')
-        
         items.append({
-            'id': str(row[0]),
+            'id': row[0],
             'slug': row[1],
             'title': row[2],
             'description': row[3],
-            'duration_minutes': row[4],
-            'price': row[5],
-            'gender_type': row[6],
-            'city': row[7],
-            'image_url': image_url,
-            'bathhouse': {
-                'id': row[9],
-                'name': row[10],
-                'address': row[11]
-            } if row[9] else None,
-            'master': {
-                'id': row[12],
-                'name': row[13],
-                'avatar_url': row[14]
-            } if row[12] else None,
-            'schedules_count': row[15] or 0,
-            'nearest_datetime': row[16].isoformat() if row[16] else None,
-            'available_spots': row[17] or 0
+            'date': row[4].isoformat() if row[4] else None,
+            'time': row[5].isoformat() if row[5] else None,
+            'location': row[6],
+            'type': row[7],
+            'price': row[8],
+            'available_spots': row[9],
+            'total_spots': row[10],
+            'image_url': row[11]
         })
     
     cur.close()
@@ -188,146 +134,205 @@ def get_events_list(params: dict) -> dict:
         'offset': offset
     }
 
-def get_event_detail(slug: str = None, event_id: str = None) -> Optional[dict]:
+def get_event_detail(slug: str = None, event_id: int = None) -> Optional[dict]:
     """Получение детальной информации о событии"""
     conn = get_db_connection()
     cur = conn.cursor()
     
     if slug:
-        where_clause = "s.slug = %s"
-        param = slug
+        cur.execute(f"""
+            SELECT id, slug, title, description, date, time, location, 
+                   type, price, available_spots, total_spots, image_url,
+                   program, rules, created_at
+            FROM {SCHEMA}.events
+            WHERE slug = %s
+        """, (slug,))
     elif event_id:
-        where_clause = "s.id = %s"
-        param = event_id
+        cur.execute(f"""
+            SELECT id, slug, title, description, date, time, location, 
+                   type, price, available_spots, total_spots, image_url,
+                   program, rules, created_at
+            FROM {SCHEMA}.events
+            WHERE id = %s
+        """, (event_id,))
     else:
         cur.close()
         conn.close()
         return None
     
-    cur.execute(f"""
-        SELECT 
-            s.id, s.slug, s.title, s.description, s.duration_minutes, s.base_price,
-            s.gender_type, s.city, s.program, s.rules, s.images, s.created_at,
-            b.id as bathhouse_id, b.slug as bathhouse_slug, b.name as bathhouse_name, b.address as bathhouse_address,
-            b.description as bathhouse_description, b.images as bathhouse_images,
-            b.rating as bathhouse_rating, b.reviews_count as bathhouse_reviews,
-            m.id as master_id, m.slug as master_slug, m.name as master_name, m.avatar_url as master_avatar,
-            m.specialization as master_specialization, m.experience as master_experience,
-            m.rating as master_rating, m.reviews_count as master_reviews,
-            u.id as organizer_id, u.name as organizer_name, u.email as organizer_email,
-            u.phone as organizer_phone, u.telegram as organizer_telegram
-        FROM {SCHEMA}.services s
-        LEFT JOIN {SCHEMA}.baths b ON s.bathhouse_id = b.id
-        LEFT JOIN {SCHEMA}.masters m ON s.master_id = m.id
-        LEFT JOIN {SCHEMA}.users u ON s.organizer_id = u.id
-        WHERE {where_clause}
-    """, (param,))
-    
     row = cur.fetchone()
+    cur.close()
+    conn.close()
     
     if not row:
-        cur.close()
-        conn.close()
         return None
     
-    result = {
-        'id': str(row[0]),
+    return {
+        'id': row[0],
         'slug': row[1],
         'title': row[2],
         'description': row[3],
-        'duration_minutes': row[4],
-        'price': row[5],
-        'gender_type': row[6],
-        'city': row[7],
-        'program': row[8] if row[8] else [],
-        'rules': row[9] if row[9] else [],
-        'images': row[10] if row[10] else [],
-        'created_at': row[11].isoformat() if row[11] else None,
-        'bathhouse': {
-            'id': row[12],
-            'slug': row[13],
-            'name': row[14],
-            'address': row[15],
-            'description': row[16],
-            'images': row[17] if row[17] else [],
-            'rating': float(row[18]) if row[18] else 0,
-            'reviews_count': row[19] or 0
-        } if row[12] else None,
-        'master': {
-            'id': row[20],
-            'slug': row[21],
-            'name': row[22],
-            'avatar_url': row[23],
-            'specialization': row[24],
-            'experience': row[25],
-            'rating': float(row[26]) if row[26] else 0,
-            'reviews_count': row[27] or 0
-        } if row[20] else None,
-        'organizer': {
-            'id': row[28],
-            'name': row[29],
-            'email': row[30],
-            'phone': row[31],
-            'telegram': row[32]
-        } if row[26] else None
+        'date': row[4].isoformat() if row[4] else None,
+        'time': row[5].isoformat() if row[5] else None,
+        'location': row[6],
+        'type': row[7],
+        'price': row[8],
+        'available_spots': row[9],
+        'total_spots': row[10],
+        'image_url': row[11],
+        'program': row[12] if row[12] else [],
+        'rules': row[13] if row[13] else [],
+        'created_at': row[14].isoformat() if row[14] else None
     }
-    
-    cur.close()
-    conn.close()
-    
-    return result
 
-def get_event_schedules(event_id: str, params: dict) -> dict:
-    """Получение расписания события"""
+def register_for_event(event_id: int, user_id: int) -> dict:
+    """Регистрация пользователя на событие"""
     conn = get_db_connection()
     cur = conn.cursor()
     
-    date_from = params.get('date_from', datetime.now().isoformat())
-    date_to = params.get('date_to', '')
-    status = params.get('status', 'active')
+    try:
+        cur.execute(f"SELECT available_spots FROM {SCHEMA}.events WHERE id = %s", (event_id,))
+        row = cur.fetchone()
+        
+        if not row:
+            cur.close()
+            conn.close()
+            return {'error': 'Событие не найдено', 'status': 404}
+        
+        if row[0] <= 0:
+            cur.close()
+            conn.close()
+            return {'error': 'Нет свободных мест', 'status': 400}
+        
+        cur.execute(f"""
+            SELECT id FROM {SCHEMA}.event_registrations 
+            WHERE event_id = %s AND user_id = %s
+        """, (event_id, user_id))
+        
+        if cur.fetchone():
+            cur.close()
+            conn.close()
+            return {'error': 'Вы уже зарегистрированы на это событие', 'status': 409}
+        
+        cur.execute(f"""
+            INSERT INTO {SCHEMA}.event_registrations (event_id, user_id, status)
+            VALUES (%s, %s, 'registered')
+            RETURNING id, registered_at
+        """, (event_id, user_id))
+        
+        reg = cur.fetchone()
+        
+        cur.execute(f"""
+            UPDATE {SCHEMA}.events 
+            SET available_spots = available_spots - 1 
+            WHERE id = %s
+        """, (event_id,))
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        return {
+            'id': reg[0],
+            'registered_at': reg[1].isoformat() if reg[1] else None,
+            'message': 'Регистрация успешна'
+        }
+    except Exception as e:
+        conn.rollback()
+        cur.close()
+        conn.close()
+        return {'error': str(e), 'status': 500}
+
+def cancel_registration(event_id: int, user_id: int) -> dict:
+    """Отмена регистрации на событие"""
+    conn = get_db_connection()
+    cur = conn.cursor()
     
-    query = f"""
-        SELECT 
-            id, start_datetime, end_datetime,
-            capacity_total, capacity_available, price_override, status
-        FROM {SCHEMA}.service_schedules
-        WHERE service_id = %s AND start_datetime >= %s
-    """
+    try:
+        cur.execute(f"""
+            SELECT id, status FROM {SCHEMA}.event_registrations 
+            WHERE event_id = %s AND user_id = %s
+        """, (event_id, user_id))
+        
+        row = cur.fetchone()
+        
+        if not row:
+            cur.close()
+            conn.close()
+            return {'error': 'Регистрация не найдена', 'status': 404}
+        
+        if row[1] == 'canceled':
+            cur.close()
+            conn.close()
+            return {'error': 'Регистрация уже отменена', 'status': 400}
+        
+        cur.execute(f"""
+            UPDATE {SCHEMA}.event_registrations 
+            SET status = 'canceled', canceled_at = NOW()
+            WHERE id = %s
+        """, (row[0],))
+        
+        cur.execute(f"""
+            UPDATE {SCHEMA}.events 
+            SET available_spots = available_spots + 1 
+            WHERE id = %s
+        """, (event_id,))
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        return {'message': 'Регистрация отменена'}
+    except Exception as e:
+        conn.rollback()
+        cur.close()
+        conn.close()
+        return {'error': str(e), 'status': 500}
+
+def get_user_registrations(user_id: int) -> list:
+    """Получение регистраций пользователя"""
+    conn = get_db_connection()
+    cur = conn.cursor()
     
-    query_params = [event_id, date_from]
+    cur.execute(f"""
+        SELECT r.id, r.event_id, r.status, r.registered_at, r.canceled_at,
+               e.slug, e.title, e.date, e.time, e.location, e.price, e.image_url
+        FROM {SCHEMA}.event_registrations r
+        JOIN {SCHEMA}.events e ON r.event_id = e.id
+        WHERE r.user_id = %s
+        ORDER BY r.registered_at DESC
+    """, (user_id,))
     
-    if date_to:
-        query += " AND start_datetime <= %s"
-        query_params.append(date_to)
-    
-    if status:
-        query += " AND status = %s"
-        query_params.append(status)
-    
-    query += " ORDER BY start_datetime ASC"
-    
-    cur.execute(query, query_params)
     rows = cur.fetchall()
-    
-    schedules = []
-    for row in rows:
-        schedules.append({
-            'id': str(row[0]),
-            'start_datetime': row[1].isoformat() if row[1] else None,
-            'end_datetime': row[2].isoformat() if row[2] else None,
-            'capacity_total': row[3],
-            'capacity_available': row[4],
-            'price': row[5],
-            'status': row[6]
-        })
-    
     cur.close()
     conn.close()
     
-    return {'schedules': schedules}
+    registrations = []
+    for row in rows:
+        registrations.append({
+            'id': row[0],
+            'event_id': row[1],
+            'status': row[2],
+            'registered_at': row[3].isoformat() if row[3] else None,
+            'canceled_at': row[4].isoformat() if row[4] else None,
+            'event': {
+                'slug': row[5],
+                'title': row[6],
+                'date': row[7].isoformat() if row[7] else None,
+                'time': row[8].isoformat() if row[8] else None,
+                'location': row[9],
+                'price': row[10],
+                'image_url': row[11]
+            }
+        })
+    
+    return registrations
 
 def handler(event: dict, context) -> dict:
-    """Обработчик запросов к API событий"""
+    """
+    API для работы с мероприятиями.
+    Поддерживает получение списка событий, регистрацию и отмену регистрации.
+    """
     method = event.get('httpMethod', 'GET')
     
     if method == 'OPTIONS':
@@ -335,68 +340,140 @@ def handler(event: dict, context) -> dict:
             'statusCode': 200,
             'headers': {
                 'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-                'Access-Control-Allow-Headers': 'Content-Type, X-Authorization'
+                'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Authorization'
             },
-            'body': '',
-            'isBase64Encoded': False
+            'body': ''
         }
     
-    query_params = event.get('queryStringParameters', {}) or {}
-    
-    slug_or_id = query_params.get('slug', '') or query_params.get('id', '')
-    action = query_params.get('action', '')
+    headers = event.get('headers', {})
+    params = event.get('queryStringParameters') or {}
     
     try:
         if method == 'GET':
-            if slug_or_id and action == 'schedule':
-                result = get_event_schedules(slug_or_id, query_params)
-            elif slug_or_id:
-                if slug_or_id.isdigit():
-                    result = get_event_detail(event_id=slug_or_id)
-                else:
-                    result = get_event_detail(slug=slug_or_id)
-                    
-                if not result:
+            slug = params.get('slug')
+            event_id = params.get('id')
+            
+            if params.get('my_registrations') == 'true':
+                user_id = get_user_id_from_token(headers)
+                if not user_id:
+                    return {
+                        'statusCode': 401,
+                        'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                        'body': json.dumps({'error': 'Требуется авторизация'})
+                    }
+                
+                registrations = get_user_registrations(user_id)
+                return {
+                    'statusCode': 200,
+                    'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                    'body': json.dumps({'registrations': registrations})
+                }
+            
+            if slug or event_id:
+                detail = get_event_detail(
+                    slug=slug,
+                    event_id=int(event_id) if event_id else None
+                )
+                
+                if not detail:
                     return {
                         'statusCode': 404,
-                        'headers': {
-                            'Content-Type': 'application/json',
-                            'Access-Control-Allow-Origin': '*'
-                        },
-                        'body': json.dumps({'error': 'Event not found'}),
-                        'isBase64Encoded': False
+                        'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                        'body': json.dumps({'error': 'Событие не найдено'})
                     }
-            else:
-                result = get_events_list(query_params)
-        else:
+                
+                return {
+                    'statusCode': 200,
+                    'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                    'body': json.dumps(detail)
+                }
+            
+            result = get_events_list(params)
             return {
-                'statusCode': 405,
-                'headers': {
-                    'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*'
-                },
-                'body': json.dumps({'error': 'Method not allowed'}),
-                'isBase64Encoded': False
+                'statusCode': 200,
+                'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                'body': json.dumps(result)
+            }
+        
+        elif method == 'POST':
+            user_id = get_user_id_from_token(headers)
+            if not user_id:
+                return {
+                    'statusCode': 401,
+                    'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                    'body': json.dumps({'error': 'Требуется авторизация'})
+                }
+            
+            body = json.loads(event.get('body', '{}'))
+            event_id = body.get('event_id')
+            
+            if not event_id:
+                return {
+                    'statusCode': 400,
+                    'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                    'body': json.dumps({'error': 'Не указан event_id'})
+                }
+            
+            result = register_for_event(event_id, user_id)
+            
+            if 'error' in result:
+                status = result.pop('status', 400)
+                return {
+                    'statusCode': status,
+                    'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                    'body': json.dumps(result)
+                }
+            
+            return {
+                'statusCode': 201,
+                'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                'body': json.dumps(result)
+            }
+        
+        elif method == 'DELETE':
+            user_id = get_user_id_from_token(headers)
+            if not user_id:
+                return {
+                    'statusCode': 401,
+                    'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                    'body': json.dumps({'error': 'Требуется авторизация'})
+                }
+            
+            event_id = params.get('event_id')
+            
+            if not event_id:
+                return {
+                    'statusCode': 400,
+                    'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                    'body': json.dumps({'error': 'Не указан event_id'})
+                }
+            
+            result = cancel_registration(int(event_id), user_id)
+            
+            if 'error' in result:
+                status = result.pop('status', 400)
+                return {
+                    'statusCode': status,
+                    'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                    'body': json.dumps(result)
+                }
+            
+            return {
+                'statusCode': 200,
+                'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                'body': json.dumps(result)
             }
         
         return {
-            'statusCode': 200,
-            'headers': {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
-            },
-            'body': json.dumps(result, default=str),
-            'isBase64Encoded': False
+            'statusCode': 405,
+            'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+            'body': json.dumps({'error': 'Метод не поддерживается'})
         }
-        
+    
     except Exception as e:
         return {
             'statusCode': 500,
-            'headers': {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
-            },
-            'body': json.dumps({'error': str(e)}),
-            'isBase64Encoded': False
+            'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+            'body': json.dumps({'error': str(e)})
         }

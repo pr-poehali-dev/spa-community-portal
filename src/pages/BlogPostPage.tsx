@@ -48,38 +48,31 @@ export default function BlogPostPage() {
   const [submittingComment, setSubmittingComment] = useState(false);
 
   useEffect(() => {
-    let isMounted = true;
-
-    const fetchPost = async () => {
-      if (isMounted) setLoading(true);
-      try {
-        const response = await fetch(`https://functions.poehali.dev/75e27ae0-e41a-4c42-8f6a-0d66ca396765?action=get&post_id=${postId}`);
-        const data = await response.json();
-        if (isMounted) setPost(data.post);
-      } catch (error) {
-        if (isMounted) console.error('Failed to fetch post:', error);
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    };
-
-    const fetchComments = async () => {
-      try {
-        const response = await fetch(`https://functions.poehali.dev/75e27ae0-e41a-4c42-8f6a-0d66ca396765?action=comments&post_id=${postId}`);
-        const data = await response.json();
-        if (isMounted) setComments(data.comments || []);
-      } catch (error) {
-        if (isMounted) console.error('Failed to fetch comments:', error);
-      }
-    };
-
     fetchPost();
     fetchComments();
-
-    return () => {
-      isMounted = false;
-    };
   }, [postId]);
+
+  const fetchPost = async () => {
+    try {
+      const response = await fetch(`https://functions.poehali.dev/75e27ae0-e41a-4c42-8f6a-0d66ca396765?action=get&post_id=${postId}`);
+      const data = await response.json();
+      setPost(data.post);
+    } catch (error) {
+      console.error('Failed to fetch post:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchComments = async () => {
+    try {
+      const response = await fetch(`https://functions.poehali.dev/75e27ae0-e41a-4c42-8f6a-0d66ca396765?action=comments&post_id=${postId}`);
+      const data = await response.json();
+      setComments(data.comments || []);
+    } catch (error) {
+      console.error('Failed to fetch comments:', error);
+    }
+  };
 
   const handleLike = async () => {
     if (!post) return;

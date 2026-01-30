@@ -190,7 +190,7 @@ export function useTelegramAuth(options: UseTelegramAuthOptions): UseTelegramAut
       const response = await fetch(apiUrls.callback, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ auth_token: token }),
+        body: JSON.stringify({ token }),
       });
 
       const data = await response.json();
@@ -201,17 +201,10 @@ export function useTelegramAuth(options: UseTelegramAuthOptions): UseTelegramAut
         return false;
       }
 
-      // Set auth data and save to unified storage
+      // Set auth data
       setAccessToken(data.access_token);
       setUser(data.user);
       setStoredRefreshToken(data.refresh_token);
-      
-      // Save to cookies and localStorage for unified auth system
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('auth_token', data.access_token);
-        document.cookie = `auth_token=${data.access_token}; path=/; max-age=900`;
-      }
-      
       scheduleRefresh(data.expires_in, refreshTokenFn);
       setIsLoading(false);
       return true;

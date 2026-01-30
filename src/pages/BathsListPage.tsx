@@ -19,23 +19,10 @@ const BathsListPage = () => {
   const [sortBy, setSortBy] = useState<string>('rating');
 
   useEffect(() => {
-    let isMounted = true;
-
-    setLoading(true);
     getBaths()
-      .then(data => {
-        if (isMounted) setBaths(data);
-      })
-      .catch(err => {
-        if (isMounted) console.error(err);
-      })
-      .finally(() => {
-        if (isMounted) setLoading(false);
-      });
-
-    return () => {
-      isMounted = false;
-    };
+      .then(data => setBaths(data))
+      .catch(console.error)
+      .finally(() => setLoading(false));
   }, []);
 
   const extractDistrict = (address: string) => {

@@ -1,7 +1,4 @@
 {
-  "yandex-auth-yandex-auth": "https://functions.poehali.dev/ecb56210-8c2b-4f4e-aa4b-b5b742d25f6a",
-  "auth-email-auth": "https://functions.poehali.dev/fdba6fa3-4998-4f82-ac05-2dd07a9acac3",
-  "schedule": "https://functions.poehali.dev/bd96d1c7-66c3-4e7a-8d97-71db8eaf221c",
   "blog": "https://functions.poehali.dev/75e27ae0-e41a-4c42-8f6a-0d66ca396765",
   "blog-ugc": "https://functions.poehali.dev/756eea00-7132-49ee-a076-e43afac6d5a6",
   "telegram-bot-telegram-auth": "https://functions.poehali.dev/dc3fb91d-b358-49d4-8739-e624e705ab71",
@@ -13,5 +10,6 @@
   "roles": "https://functions.poehali.dev/477841f7-98e0-41e0-a0bd-465deaa56a14",
   "users": "https://functions.poehali.dev/1808281e-46a4-4513-9ad6-18f885daa0b9",
   "admin-api": "https://functions.poehali.dev/b6fbba96-cc0b-4f59-b94d-e60ab18fe1b0",
+  "auth": "https://functions.poehali.dev/dc13fdd2-eb59-4658-8080-4ab0c13a84af",
   "api": "https://functions.poehali.dev/39080c98-5026-4698-87c0-7b06c8c541c8"
 }

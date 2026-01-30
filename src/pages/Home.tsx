@@ -8,8 +8,8 @@ import { getEvents, Event } from '@/lib/api';
 
 const getTypeLabel = (type: string) => {
   switch(type) {
-    case 'male': return 'Мужской';
-    case 'female': return 'Женский';
+    case 'men': return 'Мужской';
+    case 'women': return 'Женский';
     case 'mixed': return 'Совместный';
     default: return '';
   }
@@ -17,8 +17,8 @@ const getTypeLabel = (type: string) => {
 
 const getTypeBadgeColor = (type: string) => {
   switch(type) {
-    case 'male': return 'bg-blue-100 text-blue-800 hover:bg-blue-200';
-    case 'female': return 'bg-pink-100 text-pink-800 hover:bg-pink-200';
+    case 'men': return 'bg-blue-100 text-blue-800 hover:bg-blue-200';
+    case 'women': return 'bg-pink-100 text-pink-800 hover:bg-pink-200';
     case 'mixed': return 'bg-purple-100 text-purple-800 hover:bg-purple-200';
     default: return '';
   }
@@ -26,28 +26,15 @@ const getTypeBadgeColor = (type: string) => {
 
 const Home = () => {
   const [events, setEvents] = useState<Event[]>([]);
-  const [eventFilter, setEventFilter] = useState<'all' | 'male' | 'female' | 'mixed'>('all');
+  const [eventFilter, setEventFilter] = useState<'all' | 'men' | 'women' | 'mixed'>('all');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let isMounted = true;
-
-    setLoading(true);
-    const filters = eventFilter === 'all' ? {} : { gender_type: eventFilter };
-    getEvents(filters)
-      .then(data => {
-        if (isMounted) setEvents(data.items);
-      })
-      .catch(err => {
-        if (isMounted) console.error(err);
-      })
-      .finally(() => {
-        if (isMounted) setLoading(false);
-      });
-
-    return () => {
-      isMounted = false;
-    };
+    const filterType = eventFilter === 'all' ? '' : eventFilter;
+    getEvents(filterType)
+      .then(data => setEvents(data))
+      .catch(console.error)
+      .finally(() => setLoading(false));
   }, [eventFilter]);
 
   const scrollToSection = (id: string) => {
@@ -56,29 +43,30 @@ const Home = () => {
 
   return (
     <div className="animate-fade-in">
-      <section className="relative min-h-[85vh] md:h-[90vh] flex items-center justify-center overflow-hidden bg-foreground">
+      <section className="relative h-[90vh] flex items-center justify-center overflow-hidden">
         <div 
-          className="absolute inset-0 bg-cover bg-center opacity-40"
+          className="absolute inset-0 bg-cover bg-center"
           style={{ 
             backgroundImage: `url(https://cdn.poehali.dev/projects/ef3c479a-8168-43df-a113-89d5072d1123/files/73ab70f9-0949-4d1d-b65d-9025415051e9.jpg)`,
+            filter: 'brightness(0.5)'
           }}
         />
-        <div className="relative z-10 text-center text-background px-6 py-12 max-w-6xl mx-auto">
-          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-serif mb-6 md:mb-8 animate-scale-in leading-[1.1] tracking-tight">
-            Тёплый круг.<br/>Настоящий пар.<br/>Ваше сообщество.
+        <div className="relative z-10 text-center text-white px-4 max-w-5xl mx-auto">
+          <h1 className="text-5xl md:text-7xl font-serif font-bold mb-6 animate-scale-in">
+            Тёплый круг. Настоящий пар.<br/>Ваше сообщество.
           </h1>
-          <p className="text-base sm:text-lg md:text-xl mb-10 md:mb-12 max-w-2xl mx-auto leading-relaxed text-background/80">Собираем единомышленников в лучших банях Москвы</p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-stretch sm:items-center">
-            <a href="https://t.me/sparkomrf" target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto">
-              <Button size="lg" className="w-full sm:w-auto bg-background text-foreground hover:bg-background/90 font-medium px-8 py-6 text-base rounded-full">
-                <Icon name="Send" size={18} className="mr-2" />
+          <p className="text-xl md:text-2xl mb-10 max-w-3xl mx-auto leading-relaxed">Собираем единомышленников в лучших банях Москвы. аренда в складчину, экспертные мастера и душевная атмосфера.</p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <a href="https://t.me/sparkomrf" target="_blank" rel="noopener noreferrer">
+              <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-8 py-6 text-lg">
+                <Icon name="Send" size={20} className="mr-2" />
                 Вступить в сообщество
               </Button>
             </a>
             <Button 
               size="lg" 
-              variant="ghost" 
-              className="w-full sm:w-auto text-background hover:bg-background/10 font-medium px-8 py-6 text-base rounded-full border border-background/20"
+              variant="outline" 
+              className="bg-white/10 backdrop-blur-sm border-white/30 text-white hover:bg-white/20 font-semibold px-8 py-6 text-lg"
               onClick={() => scrollToSection('how-it-works')}
             >
               Как это работает?
@@ -87,87 +75,93 @@ const Home = () => {
         </div>
       </section>
 
-      <section className="py-16 md:py-24 bg-background">
-        <div className="container mx-auto px-6">
-          <div className="max-w-3xl mx-auto text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-serif mb-4 leading-tight tracking-tight">
-              Баня становится лучше,<br/>когда ты не один
-            </h2>
-            <p className="text-muted-foreground text-lg">
-              В чём ценность СПАРКОМа?
-            </p>
-          </div>
+      <section className="py-20 bg-background">
+        <div className="container mx-auto px-4">
+          <h2 className="text-4xl md:text-5xl font-serif font-bold text-center mb-4">
+            Баня становится лучше, когда ты не один
+          </h2>
+          <p className="text-center text-muted-foreground mb-16 text-lg max-w-2xl mx-auto">
+            В чём ценность СПАРКОМа?
+          </p>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-7xl mx-auto">
-            <Card className="text-center border border-border/50 hover:border-foreground/20 transition-all duration-300 bg-background">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            <Card className="text-center border-none shadow-lg hover:shadow-xl transition-all duration-300">
               <CardHeader>
-                <div className="inline-flex items-center justify-center w-14 h-14 rounded-full mb-4 mx-auto border border-border/50">
-                  <Icon name="Users" size={24} className="text-foreground" />
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-primary/10 rounded-full mb-4 mx-auto">
+                  <Icon name="Users" size={32} className="text-primary" />
                 </div>
-                <CardTitle className="font-serif text-lg mb-2">Доступность</CardTitle>
+                <CardTitle className="font-serif text-xl mb-2">Доступность</CardTitle>
               </CardHeader>
-              <CardContent className="text-muted-foreground text-sm">
-                Делим стоимость аренды на компанию — баня становится доступной каждому
+              <CardContent>
+                <p className="text-muted-foreground">
+                  Шеринг аренды. Делим стоимость аренды на компанию — баня становится доступной каждому
+                </p>
               </CardContent>
             </Card>
 
-            <Card className="text-center border border-border/50 hover:border-foreground/20 transition-all duration-300 bg-background">
+            <Card className="text-center border-none shadow-lg hover:shadow-xl transition-all duration-300">
               <CardHeader>
-                <div className="inline-flex items-center justify-center w-14 h-14 rounded-full mb-4 mx-auto border border-border/50">
-                  <Icon name="Heart" size={24} className="text-foreground" />
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-primary/10 rounded-full mb-4 mx-auto">
+                  <Icon name="Heart" size={32} className="text-primary" />
                 </div>
-                <CardTitle className="font-serif text-lg mb-2">Сообщество</CardTitle>
+                <CardTitle className="font-serif text-xl mb-2">Сообщество</CardTitle>
               </CardHeader>
-              <CardContent className="text-muted-foreground text-sm">
-                Знакомься с интересными людьми, разделяющими любовь к банным традициям
+              <CardContent>
+                <p className="text-muted-foreground">
+                  Тёплый круг. Знакомься с интересными людьми, разделяющими любовь к банным традициям
+                </p>
               </CardContent>
             </Card>
 
-            <Card className="text-center border border-border/50 hover:border-foreground/20 transition-all duration-300 bg-background">
+            <Card className="text-center border-none shadow-lg hover:shadow-xl transition-all duration-300">
               <CardHeader>
-                <div className="inline-flex items-center justify-center w-14 h-14 rounded-full mb-4 mx-auto border border-border/50">
-                  <Icon name="Flame" size={24} className="text-foreground" />
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-primary/10 rounded-full mb-4 mx-auto">
+                  <Icon name="Flame" size={32} className="text-primary" />
                 </div>
-                <CardTitle className="font-serif text-lg mb-2">Экспертиза</CardTitle>
+                <CardTitle className="font-serif text-xl mb-2">Экспертиза</CardTitle>
               </CardHeader>
-              <CardContent className="text-muted-foreground text-sm">
-                Парься с лучшими пармастерами Москвы, обучайся традициям
+              <CardContent>
+                <p className="text-muted-foreground">
+                  Мастера и ритуалы. Парься с лучшими пармастерами Москвы, обучайся традициям
+                </p>
               </CardContent>
             </Card>
 
-            <Card className="text-center border border-border/50 hover:border-foreground/20 transition-all duration-300 bg-background">
+            <Card className="text-center border-none shadow-lg hover:shadow-xl transition-all duration-300">
               <CardHeader>
-                <div className="inline-flex items-center justify-center w-14 h-14 rounded-full mb-4 mx-auto border border-border/50">
-                  <Icon name="Sparkles" size={24} className="text-foreground" />
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-primary/10 rounded-full mb-4 mx-auto">
+                  <Icon name="Sparkles" size={32} className="text-primary" />
                 </div>
-                <CardTitle className="font-serif text-lg mb-2">Удобство</CardTitle>
+                <CardTitle className="font-serif text-xl mb-2">Удобство</CardTitle>
               </CardHeader>
-              <CardContent className="text-muted-foreground text-sm">
-                Выбирай баню, записывайся на события, общайся — всё онлайн
+              <CardContent>
+                <p className="text-muted-foreground">
+                  Всё в одном месте. Выбирай баню, записывайся на события, общайся — всё онлайн
+                </p>
               </CardContent>
             </Card>
           </div>
         </div>
       </section>
 
-      <section className="py-12 md:py-20 bg-muted">
+      <section className="py-20 bg-muted">
         <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 md:mb-12 gap-4">
-            <div>
-              <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-serif font-bold mb-1 md:mb-2 leading-tight">
+          <div className="flex flex-col md:flex-row justify-between items-center mb-12">
+            <div className="mb-6 md:mb-0">
+              <h2 className="text-4xl md:text-5xl font-serif font-bold mb-2">
                 Ближайшие банные четверги
               </h2>
-              <p className="text-muted-foreground text-base md:text-lg">(и другие встречи)</p>
+              <p className="text-muted-foreground text-lg">(и другие встречи)</p>
             </div>
-            <Link to="/events" className="w-full md:w-auto">
-              <Button variant="outline" size="lg" className="w-full md:w-auto">
+            <Link to="/events">
+              <Button variant="outline" size="lg">
                 Вся афиша
                 <Icon name="ArrowRight" size={20} className="ml-2" />
               </Button>
             </Link>
           </div>
 
-          <div className="flex flex-wrap gap-2 md:gap-3 mb-6 md:mb-8 justify-center">
+          <div className="flex flex-wrap gap-3 mb-8 justify-center">
             <Button 
               variant={eventFilter === 'all' ? 'default' : 'outline'}
               onClick={() => setEventFilter('all')}
@@ -175,14 +169,14 @@ const Home = () => {
               Все события
             </Button>
             <Button 
-              variant={eventFilter === 'male' ? 'default' : 'outline'}
-              onClick={() => setEventFilter('male')}
+              variant={eventFilter === 'men' ? 'default' : 'outline'}
+              onClick={() => setEventFilter('men')}
             >
               Мужские
             </Button>
             <Button 
-              variant={eventFilter === 'female' ? 'default' : 'outline'}
-              onClick={() => setEventFilter('female')}
+              variant={eventFilter === 'women' ? 'default' : 'outline'}
+              onClick={() => setEventFilter('women')}
             >
               Женские
             </Button>
@@ -209,10 +203,10 @@ const Home = () => {
                   <Link to={`/events/${event.slug}`}>
                     <div 
                       className="h-56 bg-cover bg-center relative"
-                      style={{ backgroundImage: `url(${event.image_url || 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=800'})` }}
+                      style={{ backgroundImage: `url(${event.image_url})` }}
                     >
-                      <Badge className={`absolute top-4 right-4 ${getTypeBadgeColor(event.gender_type)}`}>
-                        {getTypeLabel(event.gender_type)}
+                      <Badge className={`absolute top-4 right-4 ${getTypeBadgeColor(event.type)}`}>
+                        {getTypeLabel(event.type)}
                       </Badge>
                     </div>
                   </Link>
@@ -224,18 +218,14 @@ const Home = () => {
                     </Link>
                     <CardDescription>
                       <div className="space-y-2 mt-3">
-                        {event.nearest_datetime && (
-                          <div className="flex items-center gap-2 text-sm">
-                            <Icon name="Calendar" size={16} />
-                            <span>{new Date(event.nearest_datetime).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}</span>
-                          </div>
-                        )}
-                        {event.bathhouse && (
-                          <div className="flex items-center gap-2 text-sm">
-                            <Icon name="MapPin" size={16} />
-                            <span>{event.bathhouse.name}</span>
-                          </div>
-                        )}
+                        <div className="flex items-center gap-2 text-sm">
+                          <Icon name="Calendar" size={16} />
+                          <span>{new Date(event.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })} в {event.time}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                          <Icon name="MapPin" size={16} />
+                          <span>{event.location}</span>
+                        </div>
                       </div>
                     </CardDescription>
                   </CardHeader>
@@ -244,11 +234,11 @@ const Home = () => {
                       <div>
                         <p className="text-3xl font-bold text-primary">{event.price} ₽</p>
                         <p className="text-sm text-muted-foreground mt-1">
-                          {event.available_spots > 0 ? `Осталось ${event.available_spots} мест` : 'Мест нет'}
+                          Осталось {event.available_spots} из {event.total_spots} мест
                         </p>
                       </div>
                       <Link to={`/events/${event.slug}`}>
-                        <Button>Подробнее</Button>
+                        <Button>Записаться</Button>
                       </Link>
                     </div>
                   </CardContent>

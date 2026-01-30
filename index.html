@@ -29,44 +29,6 @@
 
 <body>
 <div id="root"></div>
-
-<!-- Auth System: Clean startup -->
-<script>
-(function() {
-  try {
-    var AUTH_VERSION = '3.0.0';
-    var storedVersion = localStorage.getItem('auth_version');
-    
-    // Force full cleanup on version mismatch
-    if (storedVersion !== AUTH_VERSION) {
-      console.log('[Auth] New version ' + AUTH_VERSION + ', clearing all auth data');
-      
-      // Clear localStorage completely
-      localStorage.clear();
-      localStorage.setItem('auth_version', AUTH_VERSION);
-      
-      // Nuclear cookie cleanup
-      var cookies = document.cookie.split(';');
-      for (var i = 0; i < cookies.length; i++) {
-        var cookie = cookies[i];
-        var name = cookie.split('=')[0].trim();
-        
-        // Try all possible ways to delete
-        document.cookie = name + '=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-        document.cookie = name + '=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=' + location.hostname + ';';
-        document.cookie = name + '=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.' + location.hostname + ';';
-      }
-      
-      console.log('[Auth] Cleanup complete');
-    } else {
-      console.log('[Auth] Version ' + AUTH_VERSION + ' OK');
-    }
-  } catch (e) {
-    console.error('[Auth] Init error:', e);
-  }
-})();
-</script>
-
 <script type="module" src="/src/main.tsx"></script>
 
 <!-- Yandex.Metrika counter -->
