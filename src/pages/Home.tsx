@@ -32,7 +32,7 @@ const Home = () => {
   useEffect(() => {
     const filterType = eventFilter === 'all' ? '' : eventFilter;
     getEvents(filterType)
-      .then(data => setEvents(data))
+      .then(data => setEvents(Array.isArray(data) ? data : []))
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [eventFilter]);
@@ -191,6 +191,10 @@ const Home = () => {
           {loading ? (
             <div className="text-center py-12">
               <p className="text-muted-foreground">Загрузка событий...</p>
+            </div>
+          ) : events.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">Нет доступных событий</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
