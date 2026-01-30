@@ -93,9 +93,9 @@ const Home = () => {
                 <CardTitle className="font-serif text-xl mb-2">Доступность</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground">
+                <div className="text-muted-foreground">
                   Шеринг аренды. Делим стоимость аренды на компанию — баня становится доступной каждому
-                </p>
+                </div>
               </CardContent>
             </Card>
 
@@ -107,9 +107,9 @@ const Home = () => {
                 <CardTitle className="font-serif text-xl mb-2">Сообщество</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground">
+                <div className="text-muted-foreground">
                   Тёплый круг. Знакомься с интересными людьми, разделяющими любовь к банным традициям
-                </p>
+                </div>
               </CardContent>
             </Card>
 
@@ -121,9 +121,9 @@ const Home = () => {
                 <CardTitle className="font-serif text-xl mb-2">Экспертиза</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground">
+                <div className="text-muted-foreground">
                   Мастера и ритуалы. Парься с лучшими пармастерами Москвы, обучайся традициям
-                </p>
+                </div>
               </CardContent>
             </Card>
 
@@ -135,9 +135,9 @@ const Home = () => {
                 <CardTitle className="font-serif text-xl mb-2">Удобство</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground">
+                <div className="text-muted-foreground">
                   Всё в одном месте. Выбирай баню, записывайся на события, общайся — всё онлайн
-                </p>
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -232,10 +232,10 @@ const Home = () => {
                   <CardContent>
                     <div className="flex justify-between items-center">
                       <div>
-                        <p className="text-3xl font-bold text-primary">{event.price} ₽</p>
-                        <p className="text-sm text-muted-foreground mt-1">
+                        <div className="text-3xl font-bold text-primary">{event.price} ₽</div>
+                        <div className="text-sm text-muted-foreground mt-1">
                           Осталось {event.available_spots} из {event.total_spots} мест
-                        </p>
+                        </div>
                       </div>
                       <Link to={`/events/${event.slug}`}>
                         <Button>Записаться</Button>

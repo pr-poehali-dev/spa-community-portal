@@ -1,4 +1,4 @@
-const API_URL = 'https://functions.poehali.dev/39080c98-5026-4698-87c0-7b06c8c541c8';
+const API_URL = 'https://functions.poehali.dev/4d4444ef-63b0-4b5a-8985-915f1ad69e1c';
 
 export interface Event {
   id: number;
